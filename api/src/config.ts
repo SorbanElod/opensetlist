@@ -7,6 +7,8 @@ const EnvSchema = z.object({
   LOG_LEVEL: z
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])
     .default('info'),
+  // postgres://user:password@host:port/database
+  DATABASE_URL: z.string().url(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
