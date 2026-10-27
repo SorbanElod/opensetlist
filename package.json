@@ -3,14 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "workspaces": [
-    "api",
-    "web"
-  ],
+  "packageManager": "pnpm@12.11.2",
   "scripts": {
-    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w api\" \"npm run dev -w web\"",
+    "dev": "concurrently -n api,web -c blue,green \"pnpm -C api dev\" \"pnpm -C web dev\"",
     "lint": "eslint .",
-    "typecheck": "npm run typecheck -w api && npm run typecheck -w web",
+    "typecheck": "pnpm -C api typecheck && pnpm -C web typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
