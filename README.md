@@ -14,13 +14,13 @@
 
 ## Stack
 
-| Layer | Choice |
-|---|---|
-| Database | PostgreSQL (JSONB) + Drizzle migrations |
-| Backend | Fastify + TypeScript + Zod |
+| Layer    | Choice                                     |
+| -------- | ------------------------------------------ |
+| Database | PostgreSQL (JSONB) + Drizzle migrations    |
+| Backend  | Fastify + TypeScript + Zod                 |
 | Frontend | React + Vite + TypeScript, abcjs rendering |
-| Realtime | Socket.IO (per-group rooms, notify-only) |
-| Infra | Docker Compose + Traefik, homelab-hosted |
+| Realtime | Socket.IO (per-group rooms, notify-only)   |
+| Infra    | Docker Compose + Traefik, homelab-hosted   |
 
 ## Development
 
