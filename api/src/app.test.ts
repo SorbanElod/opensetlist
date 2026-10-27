@@ -7,7 +7,12 @@ import { buildApp } from './app.js';
 describe('GET /healthz', () => {
   it('returns ok', async () => {
     // 'fatal' is the quietest level the config schema allows.
-    const app = await buildApp(loadEnv({ LOG_LEVEL: 'fatal' }));
+    const app = await buildApp(
+      loadEnv({
+        LOG_LEVEL: 'fatal',
+        DATABASE_URL: 'postgres://user:pass@localhost:5432/test',
+      }),
+    );
 
     const res = await app.inject({ method: 'GET', url: '/healthz' });
 
