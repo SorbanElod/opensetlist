@@ -28,6 +28,29 @@ Solo project with an AI-assisted workflow ([Vibe Code](https://docs.mistral.ai/v
 
 See [AGENTS.md](./AGENTS.md) for the working conventions.
 
+## Local development (Docker Compose)
+
+Fresh clone to a running stack (Postgres + API + web):
+
+```bash
+docker compose up --build
+```
+
+- Web: http://localhost:5173 (Vite dev server with hot reload)
+- API: http://localhost:3000/healthz (tsx watch reload)
+
+`psql` access from the host:
+
+```bash
+docker compose exec db psql -U opensetlist -d opensetlist
+```
+
+Postgres data lives in the `postgres_data` volume and survives container
+restarts and rebuilds. To wipe it: `docker compose down -v`.
+
+Ports and credentials all have defaults; copy `.env.example` to `.env` to
+override them (never commit `.env`).
+
 ## License
 
 [MIT](./LICENSE) — © 2026 Előd Sorbán
