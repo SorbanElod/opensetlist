@@ -1,0 +1,21 @@
+/* Dark mode from day one: phones on stage are the primary device. */
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  background-color: #121212;
+  color: #e6e6e6;
+}
+
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 1rem;
+}
