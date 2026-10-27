@@ -1,0 +1,65 @@
+# Dev stack: fresh clone -> `docker compose up` -> working app.
+# Every variable has a default, so no .env file is required; copy
+# .env.example to .env to override. Postgres data survives restarts
+# in the named volume `postgres_data`.
+name: opensetlist
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-opensetlist}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opensetlist}
+      POSTGRES_DB: ${POSTGRES_DB:-opensetlist}
+    # Published so psql on the host can reach it.
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${POSTGRES_USER:-opensetlist} -d ${POSTGRES_DB:-opensetlist}',
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  api:
+    # Build context is the repo root: pnpm workspaces need the root
+    # manifests to install dependencies.
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    environment:
+      HOST: 0.0.0.0 # must bind all interfaces inside a container
+      PORT: 3000
+    ports:
+      - '${API_PORT:-3000}:3000'
+    # Bind-mount the source for hot reload (tsx watch). The named volume
+    # keeps the container's node_modules, so the host's macOS-installed
+    # packages never shadow the container's Linux ones.
+    volumes:
+      - ./api:/work/api
+      - api_node_modules:/work/api/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    ports:
+      - '${WEB_PORT:-5173}:5173'
+    volumes:
+      - ./web:/work/web
+      - web_node_modules:/work/web/node_modules
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  api_node_modules:
+  web_node_modules:
