@@ -1,0 +1,24 @@
+{
+  "name": "opensetlist",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "api",
+    "web"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w api\" \"npm run dev -w web\"",
+    "lint": "eslint .",
+    "typecheck": "npm run typecheck -w api && npm run typecheck -w web",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "concurrently": "^9.2.5",
+    "eslint": "^10.13.0",
+    "prettier": "^3.9.10",
+    "typescript": "^7.0.2"
+  }
+}
