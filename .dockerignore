@@ -1,0 +1,11 @@
+# Never send these to the Docker build context (keeps builds fast and
+# secrets out of images).
+.git
+node_modules
+**/node_modules
+**/dist
+**/coverage
+.env
+.env.*
+*.log
+.DS_Store
