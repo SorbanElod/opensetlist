@@ -51,6 +51,11 @@ restarts and rebuilds. To wipe it: `docker compose down -v`.
 Ports and credentials all have defaults; copy `.env.example` to `.env` to
 override them (never commit `.env`).
 
+To run the apps on the host instead of in containers (Postgres stays in
+Docker): start only the database with `docker compose up -d db`, copy
+`api/.env.example` to `api/.env`, then `pnpm dev` runs both apps with hot
+reload.
+
 ## License
 
 [MIT](./LICENSE) — © 2026 Előd Sorbán
