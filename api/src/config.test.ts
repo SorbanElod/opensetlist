@@ -9,6 +9,7 @@ describe('loadEnv', () => {
     const env = loadEnv({ DATABASE_URL });
 
     expect(env).toEqual({
+      NODE_ENV: 'development',
       PORT: 3000,
       HOST: '127.0.0.1',
       LOG_LEVEL: 'info',

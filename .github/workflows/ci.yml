@@ -11,6 +11,24 @@ on:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    # Integration tests (auth routes) need a live Postgres. Migrations are
+    # applied by the tests themselves (drizzle migrator), no extra step.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: opensetlist
+          POSTGRES_PASSWORD: opensetlist
+          POSTGRES_DB: opensetlist
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U opensetlist -d opensetlist"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      DATABASE_URL: postgres://opensetlist:opensetlist@localhost:5432/opensetlist
     steps:
       - uses: actions/checkout@v5
 

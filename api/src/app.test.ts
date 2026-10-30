@@ -1,24 +1,41 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { loadEnv } from './config.js';
 import { buildApp } from './app.js';
+import { loadEnv } from './config.js';
+import { buildTestDb } from './test-utils/db.js';
 
-// inject() exercises the full request path in-process — no port, no network.
-describe('GET /healthz', () => {
-  it('returns ok', async () => {
-    // 'fatal' is the quietest level the config schema allows.
-    const app = await buildApp(
+// /healthz needs no DB logic, but buildApp now takes one (auth routes are
+// registered inside). Same DATABASE_URL pattern as the route tests.
+const dbUrl = process.env.DATABASE_URL;
+
+describe.skipIf(!dbUrl)('GET /healthz', () => {
+  let app: Awaited<ReturnType<typeof buildApp>>;
+  // No-op until beforeAll succeeds: a failing setup must not add noise.
+  let close: () => Promise<void> = async () => {};
+
+  beforeAll(async () => {
+    const testDb = await buildTestDb(dbUrl!);
+    close = testDb.close;
+
+    app = await buildApp(
       loadEnv({
+        DATABASE_URL: dbUrl!,
+        NODE_ENV: 'development',
         LOG_LEVEL: 'fatal',
-        DATABASE_URL: 'postgres://user:pass@localhost:5432/test',
       }),
+      testDb.db,
     );
+  });
 
+  afterAll(async () => {
+    await app.close();
+    await close();
+  });
+
+  it('returns ok without a session', async () => {
     const res = await app.inject({ method: 'GET', url: '/healthz' });
 
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ status: 'ok' });
-
-    await app.close();
   });
 });
