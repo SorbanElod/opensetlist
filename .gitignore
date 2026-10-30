@@ -15,3 +15,6 @@ coverage/
 
 # OS noise
 .DS_Store
+
+# Personal song seed files (import via the web UI; never commit real songs)
+seed-songs/
