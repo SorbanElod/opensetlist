@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { inArray } from 'drizzle-orm';
+import { count, eq, inArray } from 'drizzle-orm';
 import cookiePlugin from '@fastify/cookie';
 import Fastify from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { authRoutes } from './routes.js';
 import * as auth from './service.js';
-import { groupMembers, sessions } from '../db/schema.js';
+import { groupMembers, groups, sessions } from '../db/schema.js';
 import { buildTestDb } from '../test-utils/db.js';
 import { loadEnv } from '../config.js';
 import { buildApp } from '../app.js';
@@ -76,19 +76,23 @@ describe.skipIf(!dbUrl)('auth routes', () => {
     expect(me.json().user.email).toBe(email);
   });
 
-  it('makes the first-ever member group_manager and later registrants member', async () => {
+  it('first registrant on an empty group becomes group_manager, later ones join as member', async () => {
+    // Scoped to this test's own registrations: the suite shares one database
+    // across test files, so "the oldest member overall" is not a stable
+    // invariant — only the group's emptiness at test start decides the
+    // bootstrap branch.
+    const [group] = await db.select().from(groups).limit(1);
+    let groupWasEmpty = !group;
+    if (group) {
+      const rows = await db
+        .select({ n: count() })
+        .from(groupMembers)
+        .where(eq(groupMembers.groupId, group.id));
+      groupWasEmpty = (rows[0]?.n ?? 0) === 0;
+    }
+
     const first = await register();
     const second = await register();
-
-    // Invariant, not ordering: the oldest member of the single group holds
-    // group_manager. True on a fresh database (CI) and on a reused dev
-    // database with members from earlier runs alike.
-    const [oldest] = await db
-      .select()
-      .from(groupMembers)
-      .orderBy(groupMembers.createdAt)
-      .limit(1);
-    expect(oldest?.role).toBe('group_manager');
 
     const roles = await db
       .select()
@@ -100,7 +104,17 @@ describe.skipIf(!dbUrl)('auth routes', () => {
         ]),
       );
     expect(roles).toHaveLength(2);
-    expect(roles.every((m) => m.role === 'member')).toBe(true);
+    const roleOf = (userId: string) =>
+      roles.find((m) => m.userId === userId)?.role;
+
+    if (groupWasEmpty) {
+      // Fresh database (CI): the very first registrant bootstraps the group.
+      expect(roleOf(first.json().user.id)).toBe('group_manager');
+      expect(roleOf(second.json().user.id)).toBe('member');
+    } else {
+      // Reused/dev database: bootstrap already happened, both join as member.
+      expect(roles.every((m) => m.role === 'member')).toBe(true);
+    }
   });
 
   it('logs in with the right password and sets a working cookie', async () => {
