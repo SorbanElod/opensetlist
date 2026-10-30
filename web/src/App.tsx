@@ -2,9 +2,13 @@ import type { ReactElement } from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 
 import { AuthProvider, useAuth } from './auth/AuthContext';
+import { AppShell } from './components/AppShell';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { SongDetailPage } from './pages/SongDetailPage';
+import { SongFormPage } from './pages/SongFormPage';
+import { SongsPage } from './pages/SongsPage';
 import { ThemeProvider } from './theme/ThemeContext';
 
 function LoadingScreen() {
@@ -52,15 +56,23 @@ export function AppRoutes() {
           </RedirectIfAuthenticated>
         }
       />
-      {/* Catch-all: deep links to not-yet-built routes still pass the gate. */}
+      {/* Everything else lives in the app shell behind the session gate. */}
       <Route
-        path="*"
+        path="/"
         element={
           <RequireAuth>
-            <HomePage />
+            <AppShell />
           </RequireAuth>
         }
-      />
+      >
+        <Route index element={<HomePage />} />
+        <Route path="songs" element={<SongsPage />} />
+        <Route path="songs/new" element={<SongFormPage />} />
+        <Route path="songs/:id" element={<SongDetailPage />} />
+        <Route path="songs/:id/edit" element={<SongFormPage />} />
+        {/* Unknown deep links land on home (still gated). */}
+        <Route path="*" element={<HomePage />} />
+      </Route>
     </Routes>
   );
 }

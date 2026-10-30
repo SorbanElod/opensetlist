@@ -58,7 +58,7 @@ describe('auth endpoints', () => {
 
     const result = await login('e@x.hu', 'pw');
 
-    expect(result.id).toBe('u1');
+    expect(result.user.id).toBe('u1');
     const [path, init] = fn.mock.calls[0]!;
     expect(String(path)).toBe('/api/auth/login');
     expect(init?.method).toBe('POST');

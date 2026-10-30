@@ -8,20 +8,24 @@ import {
 } from 'react';
 
 import * as authApi from '../api/auth';
-import type { PublicUser } from '../api/auth';
+import type { GroupRole, Membership, PublicUser } from '../api/auth';
 
 type AuthState =
   | { status: 'loading' }
-  | { status: 'authenticated'; user: PublicUser }
+  | {
+      status: 'authenticated';
+      user: PublicUser;
+      memberships: Membership[];
+    }
   | { status: 'unauthenticated' };
 
 type AuthContextValue = AuthState & {
-  login: (email: string, password: string) => Promise<PublicUser>;
+  login: (email: string, password: string) => Promise<void>;
   register: (input: {
     name: string;
     email: string;
     password: string;
-  }) => Promise<PublicUser>;
+  }) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -35,8 +39,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     authApi
       .getMe()
-      .then((user) => {
-        if (!cancelled) setState({ status: 'authenticated', user });
+      .then((me) => {
+        if (!cancelled)
+          setState({
+            status: 'authenticated',
+            user: me.user,
+            memberships: me.memberships ?? [],
+          });
       })
       .catch(() => {
         if (!cancelled) setState({ status: 'unauthenticated' });
@@ -47,17 +56,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const user = await authApi.login(email, password);
-    setState({ status: 'authenticated', user });
-    return user;
+    const me = await authApi.login(email, password);
+    setState({
+      status: 'authenticated',
+      user: me.user,
+      memberships: me.memberships ?? [],
+    });
   }, []);
 
   const register = useCallback(
     async (input: { name: string; email: string; password: string }) => {
-      const user = await authApi.register(input);
+      const me = await authApi.register(input);
       // The API auto-logs in on register (sets the session cookie).
-      setState({ status: 'authenticated', user });
-      return user;
+      setState({
+        status: 'authenticated',
+        user: me.user,
+        memberships: me.memberships ?? [],
+      });
     },
     [],
   );
@@ -86,4 +101,21 @@ export function useUser(): PublicUser {
   if (auth.status !== 'authenticated')
     throw new Error('useUser requires an authenticated session');
   return auth.user;
+}
+
+// The caller's role in the (MVP: single) group. Null while loading or when
+// the user has no membership (e.g. a platform superadmin).
+export function useMyRole(): GroupRole | null {
+  const auth = useAuth();
+  if (auth.status !== 'authenticated') return null;
+  return auth.memberships[0]?.role ?? null;
+}
+
+// Write access = member or group_manager in the group, or platform superadmin
+// (the API's authorize() applies the same rule server-side).
+export function canWrite(
+  role: GroupRole | null,
+  isSuperadmin: boolean,
+): boolean {
+  return isSuperadmin || role === 'member' || role === 'group_manager';
 }

@@ -101,7 +101,13 @@ describe('register page', () => {
       if (path === '/api/auth/me')
         return { status: 401, body: { message: 'Not authenticated' } };
       if (path === '/api/auth/register')
-        return { status: 201, body: { user: USER } };
+        return {
+          status: 201,
+          body: {
+            user: USER,
+            memberships: [{ groupId: 'g1', role: 'group_manager' }],
+          },
+        };
       return { status: 404, body: {} };
     });
 
