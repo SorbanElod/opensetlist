@@ -1,15 +1,125 @@
-import { describe, expect, it } from 'vitest';
-import { renderToString } from 'react-dom/server';
+// @vitest-environment jsdom
+import { cleanup, fireEvent, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { App } from './App';
+import { renderApp } from './test/renderApp';
+import { stubFetch } from './test/fetchMock';
 
-// Node-environment smoke test: proves the test runner executes web code end
-// to end without a DOM. Real component tests (jsdom + Testing Library) come
-// when there is interactive UI worth testing.
-describe('App', () => {
-  it('renders the app title', () => {
-    const html = renderToString(<App />);
+const USER = {
+  id: 'u1',
+  email: 'elod@example.com',
+  name: 'Előd',
+  isSuperadmin: false,
+};
 
-    expect(html).toContain('OpenSetlist');
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  localStorage.clear();
+  document.documentElement.dataset.theme = 'dark';
+});
+
+describe('session gate', () => {
+  it('redirects a deep link to /login when there is no session', async () => {
+    stubFetch((path) =>
+      path === '/api/auth/me'
+        ? { status: 401, body: { message: 'Not authenticated' } }
+        : { status: 404, body: {} },
+    );
+
+    renderApp('/some-future-route');
+
+    expect(await screen.findByText('Welcome back')).toBeTruthy();
+  });
+
+  it('lands in the app shell when the session cookie is valid (refresh keeps the session)', async () => {
+    stubFetch((path) =>
+      path === '/api/auth/me'
+        ? { status: 200, body: { user: USER } }
+        : { status: 404, body: {} },
+    );
+
+    renderApp('/');
+
+    expect(await screen.findByText('Előd')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Log out' })).toBeTruthy();
+  });
+});
+
+describe('login flow', () => {
+  it('logs in through the form and lands on the shell', async () => {
+    stubFetch((path) => {
+      if (path === '/api/auth/me')
+        return { status: 401, body: { message: 'Not authenticated' } };
+      if (path === '/api/auth/login')
+        return { status: 200, body: { user: USER } };
+      return { status: 404, body: {} };
+    });
+
+    renderApp('/login');
+    fireEvent.change(await screen.findByLabelText('Email'), {
+      target: { value: 'elod@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'hunter2hunter2' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
+
+    expect(await screen.findByText('Előd')).toBeTruthy();
+  });
+
+  it('shows the API error message on a failed login', async () => {
+    stubFetch((path) =>
+      path === '/api/auth/me'
+        ? { status: 401, body: { message: 'Not authenticated' } }
+        : { status: 401, body: { message: 'Invalid email or password' } },
+    );
+
+    renderApp('/login');
+    fireEvent.change(await screen.findByLabelText('Email'), {
+      target: { value: 'elod@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText('Password'), {
+      target: { value: 'wrongwrongwrong' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Log in' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toBe('Invalid email or password');
+  });
+});
+
+describe('logout flow', () => {
+  it('logs out and returns to /login', async () => {
+    stubFetch((path) => {
+      if (path === '/api/auth/me') return { status: 200, body: { user: USER } };
+      if (path === '/api/auth/logout')
+        return { status: 200, body: { status: 'ok' } };
+      return { status: 404, body: {} };
+    });
+
+    renderApp('/');
+    fireEvent.click(await screen.findByRole('button', { name: 'Log out' }));
+
+    expect(await screen.findByText('Welcome back')).toBeTruthy();
+  });
+});
+
+describe('theme', () => {
+  it('toggles data-theme on <html> and persists the choice', async () => {
+    stubFetch((path) =>
+      path === '/api/auth/me'
+        ? { status: 200, body: { user: USER } }
+        : { status: 404, body: {} },
+    );
+
+    renderApp('/');
+    await screen.findByText('Előd');
+    fireEvent.click(
+      screen.getByRole('button', { name: /switch to light mode/i }),
+    );
+
+    expect(document.documentElement.dataset.theme).toBe('light');
+    expect(localStorage.getItem('opensetlist-theme')).toBe('light');
   });
 });
