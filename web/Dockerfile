@@ -1,6 +1,6 @@
 # Dev image for the web app. Build context must be the repo root because
 # pnpm workspaces need the root manifests to install.
-FROM node:20-alpine
+FROM node:24-alpine
 
 WORKDIR /work
 RUN corepack enable

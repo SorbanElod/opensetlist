@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@12.11.2",
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "scripts": {
     "dev": "concurrently -n api,web -c blue,green \"pnpm -C api dev\" \"pnpm -C web dev\"",
     "lint": "eslint .",
