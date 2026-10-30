@@ -1,7 +1,9 @@
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
+import { eq } from 'drizzle-orm';
 import type { ZodError } from 'zod';
 import { z } from 'zod';
 
+import { groupMembers } from '../db/schema.js';
 import type { Db } from '../db/index.js';
 import { loginSchema, registerSchema } from './schemas.js';
 import * as auth from './service.js';
@@ -33,6 +35,15 @@ export const authRoutes: FastifyPluginAsync<AuthOptions> = async (
   app,
   { db },
 ) => {
+  // Role per group, as an array: the MVP has a single group so this is a
+  // one-element array, but the shape is already multi-group-ready — a user
+  // in several groups gets one entry per group, each with its own role.
+  const membershipsFor = (userId: string) =>
+    db
+      .select({ groupId: groupMembers.groupId, role: groupMembers.role })
+      .from(groupMembers)
+      .where(eq(groupMembers.userId, userId));
+
   const cookieOptions = {
     path: '/',
     httpOnly: true, // JS in the browser can never read the session token
@@ -68,7 +79,9 @@ export const authRoutes: FastifyPluginAsync<AuthOptions> = async (
       maxAge: auth.SESSION_TTL_DAYS * 24 * 60 * 60,
     });
 
-    return reply.code(201).send({ user });
+    return reply
+      .code(201)
+      .send({ user, memberships: await membershipsFor(user.id) });
   });
 
   app.post('/api/auth/login', async (request, reply) => {
@@ -94,7 +107,7 @@ export const authRoutes: FastifyPluginAsync<AuthOptions> = async (
       maxAge: auth.SESSION_TTL_DAYS * 24 * 60 * 60,
     });
 
-    return reply.send({ user });
+    return reply.send({ user, memberships: await membershipsFor(user.id) });
   });
 
   app.post('/api/auth/logout', async (request, reply) => {
@@ -117,6 +130,6 @@ export const authRoutes: FastifyPluginAsync<AuthOptions> = async (
       return reply.code(401).send({ message: 'Not authenticated' });
     }
 
-    return reply.send({ user });
+    return reply.send({ user, memberships: await membershipsFor(user.id) });
   });
 };
