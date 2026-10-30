@@ -67,7 +67,7 @@ Elød is learning most of this stack (first serious PostgreSQL, first AI-assiste
 
 ## Current phase
 
-P1 — Data & identity (`#6` Drizzle schema done, `#7` session auth next, `#14` role enforcement). P0 complete (scaffold, AGENTS.md, Docker Compose, CI). Backlog phases: P0 skeleton → P1 data & identity → P2 song library → P3 setlists & live → P4 auth hardening & print → P5 deploy & alpha. All issues live in this repo with `[P#.x]` prefixes — check the board, don't guess scope.
+P2 — Song library (next: `#28` auth UI shell, then `#8` songs CRUD, `#9` arrangements + ABC section editor, `#10` role-based rendering, `#20` tags). P0 and P1 are complete: walking skeleton + Compose + CI (`#1`–`#5`), Drizzle 10-table schema + migrations (`#6`), session auth — Argon2id, hashed tokens, first-user-manager bootstrap (`#7`), and the `authorize()` choke point with member management + lockout guard (`#14`). Backlog phases: P0 skeleton → P1 data & identity → P2 song library → P3 setlists & live → P4 auth hardening & print → P5 deploy & alpha. All issues live in this repo with `[P#.x]` prefixes — check the board, don't guess scope.
 
 ## Hard do-nots (past decisions — do not relitigate)
 
