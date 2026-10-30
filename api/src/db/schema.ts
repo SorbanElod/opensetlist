@@ -116,6 +116,9 @@ export const songs = pgTable(
     title: text('title').notNull(),
     author: text('author'),
     defaultKey: text('default_key').notNull(),
+    // ISO 639-1 code ("hu", "en"), nullable: language is an attribute of the
+    // song, not a tag — it is filtered on, not browsed as a label.
+    language: text('language'),
     visibility: songVisibility('visibility').notNull().default('group'),
     version: integer('version').notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true })
