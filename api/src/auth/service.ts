@@ -111,6 +111,10 @@ export async function getUserBySessionToken(
   return row ?? null;
 }
 
+// The service never sees the raw password: routes validate it (Zod) and
+// pass only the hash. Validation stays at the edge, hashing at the caller.
+type NewUser = Pick<RegisterInput, 'email' | 'name'> & { passwordHash: string };
+
 // One transaction: user + group + membership together, so a crash can never
 // leave a user without a group. The first member ever becomes group_manager
 // (the standard first-user-is-admin bootstrap); everyone else joins as member.
@@ -118,7 +122,7 @@ export async function getUserBySessionToken(
 // group_members table — irrelevant at alpha scale, noted for the thesis.
 export async function registerUser(
   db: Db,
-  input: RegisterInput & { passwordHash: string },
+  input: NewUser,
 ): Promise<PublicUser> {
   return db.transaction(async (tx) => {
     const [existingGroup] = await tx.select().from(groups).limit(1);
