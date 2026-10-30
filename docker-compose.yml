@@ -52,6 +52,10 @@ services:
     build:
       context: .
       dockerfile: web/Dockerfile
+    environment:
+      # Vite dev proxy target inside the Compose network (web/vite.config.ts).
+      # Host-local dev leaves this unset and defaults to localhost:3000.
+      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://api:3000}
     ports:
       - '${WEB_PORT:-5173}:5173'
     volumes:
