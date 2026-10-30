@@ -77,6 +77,28 @@ export async function deleteSong(id: string, version: number): Promise<void> {
   });
 }
 
+export type ImportSongsResult = {
+  imported: number;
+  skippedArrangements: number;
+  songs: Song[];
+};
+
+// Dev seeding: posts a parsed JSON file (see api/fixtures/dev-seed.json).
+export async function importSongsJson(
+  jsonText: string,
+): Promise<ImportSongsResult> {
+  let payload: unknown;
+  try {
+    payload = JSON.parse(jsonText);
+  } catch {
+    throw new Error('Not valid JSON');
+  }
+  return apiFetch<ImportSongsResult>('/api/songs/import', {
+    method: 'POST',
+    body: payload,
+  });
+}
+
 // Client-side mirror of the songs schemas: fail fast, no request. The API
 // stays the authority — its 400 issues are mapped onto fields by the form.
 export type SongField = 'title' | 'author' | 'defaultKey' | 'language';

@@ -2,7 +2,12 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 
 import type { Db } from '../db/index.js';
 import { groups, songs } from '../db/schema.js';
-import type { CreateSongInput, UpdateSongInput } from './schemas.js';
+import {
+  KEYS,
+  type CreateSongInput,
+  type ImportSongsInput,
+  type UpdateSongInput,
+} from './schemas.js';
 
 export type SongView = {
   id: string;
@@ -22,6 +27,11 @@ export type SongResult =
 
 export type DeleteResult =
   { ok: true; id: string } | { ok: false; reason: 'not_found' | 'conflict' };
+
+export type ImportResult = {
+  songs: SongView[];
+  skippedArrangements: number;
+};
 
 // The service takes groupId explicitly (not "the" group): multi-group later
 // reuses every function unchanged, exactly like the members module.
@@ -115,6 +125,49 @@ export async function updateSong(
   const existing = await getSong(db, input.groupId, input.id);
   if (!existing) return { ok: false, reason: 'not_found' };
   return { ok: false, reason: 'conflict' };
+}
+
+// JSON seed import. One transaction: a mid-loop failure rolls back the whole
+// import. Song-level fields only — arrangements/tags in the file are counted
+// and skipped until #9/#20 land.
+export async function importSongs(
+  db: Db,
+  input: { groupId: string; ownerId: string; data: ImportSongsInput },
+): Promise<ImportResult> {
+  return db.transaction(async (tx) => {
+    const created: SongView[] = [];
+    let skippedArrangements = 0;
+
+    for (const s of input.data.songs) {
+      // The seed format carries the key on arrangements; the song's
+      // default_key falls back to the first arrangement's key, else 'C'.
+      const firstKey = s.arrangements?.[0]?.original_key;
+      const defaultKey = KEYS.includes(firstKey as (typeof KEYS)[number])
+        ? (firstKey as string)
+        : 'C';
+      const author =
+        [s.authors?.lyrics, s.authors?.music].filter(Boolean).join(' · ') ||
+        null;
+      skippedArrangements += s.arrangements?.length ?? 0;
+
+      const [song] = await tx
+        .insert(songs)
+        .values({
+          groupId: input.groupId,
+          ownerId: input.ownerId,
+          title: s.title,
+          author,
+          defaultKey,
+          visibility: s.visibility ?? 'group',
+          language: s.language ?? null,
+        })
+        .returning();
+
+      created.push(song!);
+    }
+
+    return { songs: created, skippedArrangements };
+  });
 }
 
 export async function deleteSong(

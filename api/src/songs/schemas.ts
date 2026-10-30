@@ -50,3 +50,39 @@ export const deleteSongSchema = z.object({
 
 export type CreateSongInput = z.infer<typeof createSongSchema>;
 export type UpdateSongInput = z.infer<typeof updateSongSchema>;
+
+// JSON import (dev seeding via api/fixtures/dev-seed.json; a polished import
+// UI is post-alpha). Tolerant of the draft seed format: zod strips unknown
+// keys; arrangements and tags are accepted but skipped until #9/#20 land.
+export const importSongsSchema = z.object({
+  songs: z
+    .array(
+      z.object({
+        title: z.string().trim().min(1).max(200),
+        authors: z
+          .object({
+            lyrics: z.string().optional(),
+            music: z.string().optional(),
+          })
+          .optional(),
+        visibility: z
+          .enum(['private', 'group', 'public', 'PRIVATE', 'GROUP', 'PUBLIC'])
+          .transform(
+            (v): 'private' | 'group' | 'public' =>
+              v.toLowerCase() as 'private' | 'group' | 'public',
+          )
+          .optional(),
+        language: languageSchema.optional(),
+        // Only original_key is read (to derive the song's default key);
+        // the arrangements themselves are not stored yet (#9).
+        arrangements: z
+          .array(z.object({ original_key: z.string().optional() }))
+          .optional(),
+        tags: z.array(z.string()).optional(), // not stored yet (#20)
+      }),
+    )
+    .min(1)
+    .max(100),
+});
+
+export type ImportSongsInput = z.infer<typeof importSongsSchema>;
