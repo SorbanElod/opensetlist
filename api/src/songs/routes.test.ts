@@ -67,27 +67,43 @@ describe.skipIf(!dbUrl)('songs routes', () => {
   it('lets a reader list and read songs but not create them', async () => {
     const { token, user } = await registerUser();
     // Demote directly in the DB: role changes through the API need a
-    // group_manager, and on a reused test DB nobody here is one.
-    await db
-      .update(groupMembers)
-      .set({ role: 'reader' })
+    // group_manager, which on a fresh CI database may not exist yet.
+    // Restore the original role afterwards — this suite shares one database
+    // with the other test files, and the auth suite asserts that the oldest
+    // member holds group_manager.
+    const [membership] = await db
+      .select({ role: groupMembers.role })
+      .from(groupMembers)
       .where(eq(groupMembers.userId, user.id));
+    const originalRole = membership!.role;
 
-    const list = await app.inject({
-      method: 'GET',
-      url: '/api/songs',
-      cookies: { [auth.SESSION_COOKIE]: token },
-    });
-    expect(list.statusCode).toBe(200);
-    expect(Array.isArray(list.json().songs)).toBe(true);
+    try {
+      await db
+        .update(groupMembers)
+        .set({ role: 'reader' })
+        .where(eq(groupMembers.userId, user.id));
 
-    const create = await app.inject({
-      method: 'POST',
-      url: '/api/songs',
-      payload: validSong(),
-      cookies: { [auth.SESSION_COOKIE]: token },
-    });
-    expect(create.statusCode).toBe(403);
+      const list = await app.inject({
+        method: 'GET',
+        url: '/api/songs',
+        cookies: { [auth.SESSION_COOKIE]: token },
+      });
+      expect(list.statusCode).toBe(200);
+      expect(Array.isArray(list.json().songs)).toBe(true);
+
+      const create = await app.inject({
+        method: 'POST',
+        url: '/api/songs',
+        payload: validSong(),
+        cookies: { [auth.SESSION_COOKIE]: token },
+      });
+      expect(create.statusCode).toBe(403);
+    } finally {
+      await db
+        .update(groupMembers)
+        .set({ role: originalRole })
+        .where(eq(groupMembers.userId, user.id));
+    }
   });
 
   it('creates a song (201), lists it, and reads it by id', async () => {
