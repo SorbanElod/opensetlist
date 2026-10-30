@@ -1,7 +1,7 @@
 # AGENTS.md — OpenSetlist
 
 Context file for the AI coding agent. **Read at the start of every session, before doing anything else.**
-Maintained by Előd Sorbán. Last updated: 2026-10-27.
+Maintained by Előd Sorbán. Last updated: 2026-10-30.
 
 ## Project context
 
@@ -51,7 +51,7 @@ Rules:
 3. **Conventional commits**, small and often — each commit is an undo point.
 4. **PR description ends with `Closes #<issue number>`.**
 5. **Never commit secrets or `.env`.** `.env.example` with dummy values only. (The CLI guards `.env` reads/writes — don't fight it.)
-6. **No new dependencies, no new infrastructure without asking first.** Explicitly banned in MVP: Redis, RabbitMQ, Prisma, MongoDB, any microservice split.
+6. **Add warranted dependencies from the start, not as retrofits** — if a dep is needed now or will clearly be needed in the next phase, give a brief pro/contra and add it once approved (P2.0 precedent: react-router, Tailwind v4, jsdom + Testing Library). Hard-banned in the MVP regardless: Redis, RabbitMQ, Prisma, MongoDB, any microservice split. New *infrastructure* always needs asking first.
 7. **Plan before execute:** show the file tree / dependency list and wait for approval before writing code on anything non-trivial.
 8. **Agent writes tests; Előd runs them.** Tests are part of the work, not an afterthought.
 9. **Postman collection stays current.** `postman/OpenSetlist.postman_collection.json` is the browsable API contract: any PR that adds or changes an endpoint updates the collection in the same PR — request, expected status codes, and example responses.
