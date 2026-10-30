@@ -10,7 +10,8 @@ const dbUrl = process.env.DATABASE_URL;
 
 describe.skipIf(!dbUrl)('GET /healthz', () => {
   let app: Awaited<ReturnType<typeof buildApp>>;
-  let close: () => Promise<void>;
+  // No-op until beforeAll succeeds: a failing setup must not add noise.
+  let close: () => Promise<void> = async () => {};
 
   beforeAll(async () => {
     const testDb = await buildTestDb(dbUrl!);
