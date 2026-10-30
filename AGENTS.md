@@ -66,7 +66,7 @@ Elød is learning most of this stack (first serious PostgreSQL, first AI-assiste
 
 ## Current phase
 
-P0 — Walking skeleton (`#1` scaffold, `#3` this file, `#4` Docker Compose, `#5` CI). Backlog phases: P0 skeleton → P1 data & identity → P2 song library → P3 setlists & live → P4 auth hardening & print → P5 deploy & alpha. All issues live in this repo with `[P#.x]` prefixes — check the board, don't guess scope.
+P1 — Data & identity (`#6` Drizzle schema done, `#7` session auth next, `#14` role enforcement). P0 complete (scaffold, AGENTS.md, Docker Compose, CI). Backlog phases: P0 skeleton → P1 data & identity → P2 song library → P3 setlists & live → P4 auth hardening & print → P5 deploy & alpha. All issues live in this repo with `[P#.x]` prefixes — check the board, don't guess scope.
 
 ## Hard do-nots (past decisions — do not relitigate)
 
@@ -76,5 +76,6 @@ P0 — Walking skeleton (`#1` scaffold, `#3` this file, `#4` Docker Compose, `#5
 - No native mobile apps; PWA only, and post-alpha.
 - No global tag pool: tags are group-scoped vocabularies; cross-group sharing resolves by normalized name later.
 - No per-setlist guest scoping before post-alpha (readers see the whole group library).
+- No multi-group in the MVP: group creation, invitations, and join mechanics land post-alpha (invite link, code, or email — mechanics TBD). The schema is multi-tenant already; the app layer enforces the single group (registration bootstraps it, first user becomes group_manager).
 - No OT/CRDT collaborative editing: notify-only events + refetch.
 - Don't redesign the 10-table schema without discussing it here first.
