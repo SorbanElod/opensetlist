@@ -1,0 +1,442 @@
+{
+  "info": {
+    "name": "OpenSetlist API",
+    "description": "Manual walkthrough for session auth (#7) and role enforcement (#14).\n\nBefore starting: `docker compose down -v && docker compose up -d db && pnpm -C api db:migrate` gives you a fresh database (the existing dev data is all test junk).\n\nPostman automatically stores and sends cookies per domain, so Register/Login keep you logged in across requests. To test the guest-vs-manager flow, log out (or switch user via Login) between the two roles.\n\nExpected flow on a fresh database:\n1. Register -> first user becomes group_manager of the lazily created single group\n2. Register again (second user) -> joins as member\n3. List members -> see both roles\n4. As the second user: PATCH/DELETE -> 403\n5. As the first user: PATCH role, DELETE member -> 200\n6. Demote the only manager -> 409 (last-manager lockout guard)\n\nMaintenance rule (AGENTS.md): every new endpoint lands together with its entry here, including example responses.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "email",
+      "value": "elod@example.com"
+    },
+    {
+      "key": "name",
+      "value": "Elod"
+    },
+    {
+      "key": "password",
+      "value": "at-least-ten"
+    },
+    {
+      "key": "guestEmail",
+      "value": "guest@example.com"
+    },
+    {
+      "key": "memberId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 + cookie set', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.response.headers.get('Set-Cookie') && console.log('Session cookie set');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"name\": \"{{name}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Creates the user, the single group (if it does not exist yet), and the membership — one transaction. First-ever member: group_manager, later ones: member. Auto-login: response sets the session cookie. Duplicate email: 409. Short password: 400."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Set-Cookie",
+                  "value": "opensetlist_session=<43-char-token>; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000"
+                }
+              ],
+              "body": "{\n  \"user\": {\n    \"id\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n    \"email\": \"elod@example.com\",\n    \"name\": \"Elod\",\n    \"isSuperadmin\": false\n  }\n}"
+            },
+            {
+              "name": "400 Invalid input",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Invalid input\",\n  \"issues\": [\n    {\n      \"path\": \"password\",\n      \"message\": \"Too small: expected string to have >=10 characters\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "409 Email already registered",
+              "status": "Conflict",
+              "code": 409,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Email already registered\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Sets a fresh 30-day session cookie. Wrong password and unknown email return the same 401 message — the API never confirms which emails exist. Tip: change the email variable and login to switch user (the cookie jar follows the last login)."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                },
+                {
+                  "key": "Set-Cookie",
+                  "value": "opensetlist_session=<43-char-token>; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000"
+                }
+              ],
+              "body": "{\n  \"user\": {\n    \"id\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n    \"email\": \"elod@example.com\",\n    \"name\": \"Elod\",\n    \"isSuperadmin\": false\n  }\n}"
+            },
+            {
+              "name": "401 Invalid credentials",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Invalid email or password\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            },
+            "description": "Who am I, based on the session cookie. 200 with the user, or 401 when not logged in / session expired."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"user\": {\n    \"id\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n    \"email\": \"elod@example.com\",\n    \"name\": \"Elod\",\n    \"isSuperadmin\": false\n  }\n}"
+            },
+            {
+              "name": "401 Not authenticated",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Not authenticated\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Revokes the session row and clears the cookie. POST (not GET) so a stray link cannot log you out. 200 always."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"status\": \"ok\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "members",
+      "item": [
+        {
+          "name": "List members",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.members && body.members.length > 0) {",
+                  "  pm.collectionVariables.set('memberId', body.members[0].id);",
+                  "  console.log('memberId set to first member: ' + body.members[0].email + ' (' + body.members[0].role + ')');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/members",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "members"]
+            },
+            "description": "Visible to every group member — readers included (authorize('reader')). Anonymous: 401. The test script stores the FIRST member's id into {{memberId}} — on a fresh database that is the first manager, i.e. you."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"members\": [\n    {\n      \"id\": \"3f2c1d9e-2222-4aaa-9bbb-000000000001\",\n      \"userId\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n      \"name\": \"Elod\",\n      \"email\": \"elod@example.com\",\n      \"role\": \"group_manager\"\n    },\n    {\n      \"id\": \"3f2c1d9e-2222-4aaa-9bbb-000000000002\",\n      \"userId\": \"b7d8f9a0-1111-4bbb-8ccc-000000000002\",\n      \"name\": \"Guest\",\n      \"email\": \"guest@example.com\",\n      \"role\": \"member\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "401 Not authenticated",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Not authenticated\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Change member role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"member\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/members/:memberId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "members", ":memberId"],
+              "variable": [
+                {
+                  "key": "memberId",
+                  "value": "{{memberId}}"
+                }
+              ]
+            },
+            "description": "Requires group_manager (or superadmin). Body role: reader | member | group_manager. Reader/member attempting: 403. Invalid role: 400. Unknown member id: 404. Demoting the LAST group_manager: 409 — the lockout guard. Try it with the body role 'member' against yourself on a fresh database."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"member\": {\n    \"id\": \"3f2c1d9e-2222-4aaa-9bbb-000000000002\",\n    \"userId\": \"b7d8f9a0-1111-4bbb-8ccc-000000000002\",\n    \"name\": \"Guest\",\n    \"email\": \"guest@example.com\",\n    \"role\": \"member\"\n  }\n}"
+            },
+            {
+              "name": "403 Forbidden (reader or member)",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Forbidden\"\n}"
+            },
+            {
+              "name": "404 Member not found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Member not found\"\n}"
+            },
+            {
+              "name": "409 Last manager lockout",
+              "status": "Conflict",
+              "code": 409,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Cannot remove the last group_manager of the group\"\n}"
+            },
+            {
+              "name": "400 Invalid role",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Invalid input\",\n  \"issues\": [\n    {\n      \"path\": \"role\",\n      \"message\": \"Invalid enum value. Expected 'reader' | 'member' | 'group_manager', received 'admin'\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Remove member",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/members/:memberId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "members", ":memberId"],
+              "variable": [
+                {
+                  "key": "memberId",
+                  "value": "{{memberId}}"
+                }
+              ]
+            },
+            "description": "Requires group_manager (or superadmin). Removing the LAST group_manager: 409. Note: even a superadmin hits that 409 — the guard lives in the service layer, below the role ladder, on purpose."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"member\": {\n    \"id\": \"3f2c1d9e-2222-4aaa-9bbb-000000000002\",\n    \"userId\": \"b7d8f9a0-1111-4bbb-8ccc-000000000002\",\n    \"name\": \"Guest\",\n    \"email\": \"guest@example.com\",\n    \"role\": \"member\"\n  }\n}"
+            },
+            {
+              "name": "403 Forbidden (reader or member)",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Forbidden\"\n}"
+            },
+            {
+              "name": "409 Last manager lockout",
+              "status": "Conflict",
+              "code": 409,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Cannot remove the last group_manager of the group\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
