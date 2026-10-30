@@ -54,6 +54,7 @@ Rules:
 6. **No new dependencies, no new infrastructure without asking first.** Explicitly banned in MVP: Redis, RabbitMQ, Prisma, MongoDB, any microservice split.
 7. **Plan before execute:** show the file tree / dependency list and wait for approval before writing code on anything non-trivial.
 8. **Agent writes tests; Előd runs them.** Tests are part of the work, not an afterthought.
+9. **Postman collection stays current.** `postman/OpenSetlist.postman_collection.json` is the browsable API contract: any PR that adds or changes an endpoint updates the collection in the same PR — request, expected status codes, and example responses.
 
 ## Collaboration expectations
 
