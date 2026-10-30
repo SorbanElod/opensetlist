@@ -84,5 +84,48 @@ describe('SongsPage', () => {
 
     await screen.findByText('Amazing Grace');
     expect(screen.queryByRole('button', { name: /new song/i })).toBeNull();
+    expect(screen.queryByLabelText('Import songs from JSON')).toBeNull();
+  });
+
+  it('imports songs from a JSON file and shows the result', async () => {
+    const fn = stubFetch((path, init) => {
+      if (path === '/api/auth/me')
+        return {
+          status: 200,
+          body: {
+            user: USER,
+            memberships: [{ groupId: 'g1', role: 'member' }],
+          },
+        };
+      if (path === '/api/songs/import')
+        return {
+          status: 201,
+          body: { imported: 1, skippedArrangements: 3, songs: [SONGS[0]] },
+        };
+      if (path === '/api/songs' && (!init?.method || init.method === 'GET'))
+        return { status: 200, body: { songs: [SONGS[0]] } };
+      return { status: 404, body: {} };
+    });
+
+    renderApp('/songs');
+    const input = await screen.findByLabelText('Import songs from JSON');
+    const file = new File(
+      [JSON.stringify({ songs: [{ title: 'Amazing Grace' }] })],
+      'seed.json',
+      { type: 'application/json' },
+    );
+    fireEvent.change(input, { target: { files: [file] } });
+
+    const status = await screen.findByRole('status');
+    expect(status.textContent).toContain('Imported 1 song');
+    expect(status.textContent).toContain('3 arrangement(s) skipped');
+
+    const importCall = fn.mock.calls.find(
+      ([p]) => String(p) === '/api/songs/import',
+    );
+    expect(importCall).toBeTruthy();
+    expect(JSON.parse(String(importCall![1]?.body))).toEqual({
+      songs: [{ title: 'Amazing Grace' }],
+    });
   });
 });

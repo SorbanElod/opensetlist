@@ -554,6 +554,49 @@
           ]
         },
         {
+          "name": "Import songs (JSON seed)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/songs/import",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "songs", "import"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"songs\": [\n    {\n      \"title\": \"Amazing Grace\",\n      \"authors\": { \"lyrics\": \"John Newton\" },\n      \"visibility\": \"GROUP\",\n      \"arrangements\": [{ \"original_key\": \"G\" }]\n    }\n  ]\n}"
+            },
+            "description": "member+ only. Tolerant seed format (see api/fixtures/dev-seed.json): unknown keys are stripped; arrangements/tags are accepted but skipped until #9/#20. The song's defaultKey falls back to the first arrangement's original_key, else C."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"imported\": 1,\n  \"skippedArrangements\": 1,\n  \"songs\": [\n    {\n      \"id\": \"5e4d3c2b-4444-4fff-8aaa-000000000001\",\n      \"title\": \"Amazing Grace\",\n      \"author\": \"John Newton\",\n      \"defaultKey\": \"G\",\n      \"visibility\": \"group\",\n      \"language\": null,\n      \"ownerId\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n      \"version\": 1,\n      \"createdAt\": \"2026-10-30T10:00:00.000Z\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "400 Invalid input",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Invalid input\",\n  \"issues\": [\n    { \"path\": \"songs\", \"message\": \"Array must contain at least 1 element\" }\n  ]\n}"
+            }
+          ]
+        },
+        {
           "name": "Get song",
           "request": {
             "method": "GET",

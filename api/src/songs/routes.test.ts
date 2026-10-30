@@ -250,6 +250,70 @@ describe.skipIf(!dbUrl)('songs routes', () => {
     expect(res.statusCode).toBe(400);
   });
 
+  it('imports songs from a JSON seed (maps authors/visibility, derives key, skips arrangements)', async () => {
+    const { token } = await registerUser();
+    const cookie = { [auth.SESSION_COOKIE]: token };
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/songs/import',
+      cookies: cookie,
+      payload: {
+        songs: [
+          {
+            title: 'Lorem Ipsum Dolor',
+            authors: { lyrics: 'Lorem Szerző', music: 'Ipsum Zeneszerző' },
+            visibility: 'GROUP',
+            arrangements: [{ original_key: 'G' }, { original_key: 'E' }],
+          },
+          {
+            title: 'Lőrém Ípszűm Dőlőr',
+            authors: { lyrics: 'Lőrém Szerző' },
+            arrangements: [{ original_key: 'E' }],
+          },
+        ],
+      },
+    });
+
+    expect(res.statusCode).toBe(201);
+    const body = res.json();
+    expect(body.imported).toBe(2);
+    expect(body.skippedArrangements).toBe(3);
+    const first = body.songs.find(
+      (s: { title: string }) => s.title === 'Lorem Ipsum Dolor',
+    );
+    expect(first.author).toBe('Lorem Szerző · Ipsum Zeneszerző');
+    expect(first.visibility).toBe('group');
+    expect(first.defaultKey).toBe('G'); // derived from the first arrangement
+    const second = body.songs.find(
+      (s: { title: string }) => s.title === 'Lőrém Ípszűm Dőlőr',
+    );
+    expect(second.author).toBe('Lőrém Szerző');
+    expect(second.defaultKey).toBe('E');
+
+    // The created songs show up in the list (matched by id — the shared test
+    // DB may already contain same-titled rows from earlier runs).
+    const list = await app.inject({
+      method: 'GET',
+      url: '/api/songs',
+      cookies: cookie,
+    });
+    const listedIds = list.json().songs.map((s: { id: string }) => s.id);
+    for (const s of body.songs) expect(listedIds).toContain(s.id);
+  });
+
+  it('rejects an invalid import payload with 400', async () => {
+    const { token } = await registerUser();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/songs/import',
+      cookies: { [auth.SESSION_COOKIE]: token },
+      payload: { songs: [] },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().message).toBe('Invalid input');
+  });
+
   it('deletes with the current version; stale version gets 409, then GET is 404', async () => {
     const { token } = await registerUser();
     const cookie = { [auth.SESSION_COOKIE]: token };

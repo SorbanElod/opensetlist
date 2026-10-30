@@ -1,0 +1,85 @@
+{
+  "$comment": "OpenSetlist dev seed — 2 placeholder songs (lorem ipsum) for testing the P2 pages. Structure follows the drafted MVP schema: songs -> arrangements -> sections[{label, kind, content}]. Each section's content is ABC 2.1 (abcjs-parseable): chord symbols as quoted annotations, lyrics on w: lines aligned 1 syllable per note. Chord annotations are simplified placeholder harmonizations, not authoritative. Import via POST /api/songs/import (song-level fields only; arrangements/tags are skipped until #9/#20). Real songs for the alpha land with issue #17.",
+  "tags": ["worship", "classic", "acoustic"],
+  "songs": [
+    {
+      "title": "Lorem Ipsum Dolor",
+      "authors": { "lyrics": "Lorem Szerző", "music": "Ipsum Zeneszerző" },
+      "year": 1861,
+      "visibility": "GROUP",
+      "owner": "elod",
+      "tags": ["worship", "classic"],
+      "notes": "Baseline song: standard 4/4 hymn. Two arrangements (Standard in G, Acoustic in E) to test the arrangement switcher and key display on the song detail page.",
+      "arrangements": [
+        {
+          "title": "Standard (G)",
+          "original_key": "G",
+          "bpm": 92,
+          "time_signature": "4/4",
+          "default_sequence": ["V1", "C", "V1", "C"],
+          "sections": [
+            {
+              "label": "V1",
+              "kind": "VERSE",
+              "content": "X:1\nT:Lorem Ipsum Dolor — Verse 1\nC:Ipsum Zeneszerző\nM:4/4\nL:1/8\nQ:1/4=92\nK:G\n\"G\"G2 A2 B2 c2 | \"C\"c2 B2 A2 G2 | \"Em\"B2 B2 \"C\"A2 A2 | \"D\"d2 B2 \"G\"A2 G2 |\nw: lo-rem ip-sum do-lor sit a-met con-sec-te-tur sed do ut\n\"G\"B2 B2 c2 d2 | \"Em\"e2 d2 c2 B2 | \"C\"A2 A2 \"D\"B2 B2 | \"G\"G2 G2 G2 G2 |]\nw: ei-us-mod tem-por in-ci-di-dunt ut la-bo-re et ma-gna"
+            },
+            {
+              "label": "C",
+              "kind": "CHORUS",
+              "content": "X:2\nT:Lorem Ipsum Dolor — Chorus\nC:Ipsum Zeneszerző\nM:4/4\nL:1/8\nQ:1/4=92\nK:G\n\"C\"c2 c2 c2 B2 | \"G\"B2 B2 B2 A2 | \"D\"A2 A2 B2 B2 | \"G\"G2 B2 d2 d2 |\nw: ma-gna a-li-qua ut e-nim ad mi-nim ve-ni-am quis ut\n\"C\"e2 d2 c2 B2 | \"G\"B2 A2 B2 G2 | \"D\"A2 B2 c2 B2 | \"G\"G2 G2 G2 G2 |]\nw: nos-trud ex-er-ci-ta-ti-on ul-lam-co la-bo-ris ni-si"
+            }
+          ]
+        },
+        {
+          "title": "Acoustic (E)",
+          "original_key": "E",
+          "bpm": 76,
+          "time_signature": "4/4",
+          "default_sequence": ["V1", "C"],
+          "sections": [
+            {
+              "label": "V1",
+              "kind": "VERSE",
+              "content": "X:1\nT:Lorem Ipsum Dolor — Verse 1 (Acoustic)\nC:Ipsum Zeneszerző\nM:4/4\nL:1/8\nQ:1/4=76\nK:E\n\"E\"E2 F2 G2 A2 | \"A\"A2 G2 \"E\"F2 E2 | \"B\"B2 c2 B2 A2 | \"E\"E2 G2 \"B\"B2 A2 |\nw: lo-rem ip-sum do-lor sit a-met con-sec-te-tur sed do ut\n\"A\"B2 B2 c2 B2 | \"C#m\"c2 B2 A2 G2 | \"B\"B2 A2 \"E\"G2 F2 | \"E\"E2 E2 E2 E2 |]\nw: ei-us-mod tem-por in-ci-di-dunt ut la-bo-re et ma-gna"
+            },
+            {
+              "label": "C",
+              "kind": "CHORUS",
+              "content": "X:2\nT:Lorem Ipsum Dolor — Chorus (Acoustic)\nC:Ipsum Zeneszerző\nM:4/4\nL:1/8\nQ:1/4=76\nK:E\n\"E\"E2 G2 B2 c2 | \"A\"c2 B2 A2 G2 | \"B\"B2 B2 \"C#m\"c2 B2 | \"E\"B2 G2 \"B\"B2 A2 |\nw: ma-gna a-li-qua ut e-nim ad mi-nim ve-ni-am quis ut\n\"A\"A2 B2 c2 B2 | \"C#m\"c2 c2 B2 A2 | \"B\"B2 A2 \"E\"G2 F2 | \"E\"E2 E2 E2 E2 |]\nw: nos-trud ex-er-ci-ta-ti-on ul-lam-co la-bo-ris ni-si"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Lőrém Ípszűm Dőlőr",
+      "authors": { "lyrics": "Lőrém Szerző", "music": "Ípszűm Zeneszerző" },
+      "year": null,
+      "visibility": "GROUP",
+      "owner": "elod",
+      "tags": ["acoustic"],
+      "notes": "Edge-case song: accented Hungarian characters (ő, ű, á, é, í, ó, ö) in title, author and lyrics — tests search, sort and font rendering. Also 3/4 meter and a sharp chord (C#m) for key display.",
+      "arrangements": [
+        {
+          "title": "Acoustic (E)",
+          "original_key": "E",
+          "bpm": 78,
+          "time_signature": "3/4",
+          "default_sequence": ["V1", "C"],
+          "sections": [
+            {
+              "label": "V1",
+              "kind": "VERSE",
+              "content": "X:1\nT:Lőrém Ípszűm Dőlőr — Verse 1\nC:Ípszűm Zeneszerző\nM:3/4\nL:1/8\nQ:1/4=78\nK:E\n\"E\"E2 F2 G2 | \"A\"A2 G2 F2 | \"B\"B2 c2 B2 | \"E\"E2 B2 G2 |\nw: lő-rém ip-szűm dő-lőr szit á-met sed dő űt\n\"A\"A2 B2 c2 | \"C#m\"c2 B2 A2 | \"B\"B2 A2 \"E\"G2 | \"E\"E2 E2 E2 |]\nw: á-lít tém-pőr ínc-cí-díd-dűnt űt lá-bő-ré"
+            },
+            {
+              "label": "C",
+              "kind": "CHORUS",
+              "content": "X:2\nT:Lőrém Ípszűm Dőlőr — Chorus\nC:Ípszűm Zeneszerző\nM:3/4\nL:1/8\nQ:1/4=78\nK:E\n\"E\"E2 G2 B2 | \"A\"c2 B2 A2 | \"B\"B2 B2 c2 | \"E\"B2 G2 E2 |\nw: mág-na á-lí-kva űt é-nim ád mí-nim kvis\n\"A\"A2 B2 c2 | \"C#m\"c2 B2 A2 | \"B\"B2 A2 \"E\"G2 | \"E\"E2 E2 E2 |]\nw: nős-trud égsz é-á kom-mó-dő kőn-szé-kvat szí"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -7,6 +7,7 @@ import type { Db } from '../db/index.js';
 import {
   createSongSchema,
   deleteSongSchema,
+  importSongsSchema,
   updateSongSchema,
 } from './schemas.js';
 import * as songs from './service.js';
@@ -56,6 +57,34 @@ export const songsRoutes: FastifyPluginAsync<SongsOptions> = async (
       });
 
       return reply.code(201).send({ song });
+    },
+  );
+
+  // JSON seed import (dev tooling; see api/fixtures/dev-seed.json).
+  // Static path, so it wins over /api/songs/:id in the router.
+  app.post(
+    '/api/songs/import',
+    { preHandler: authorize(db, 'member') },
+    async (request, reply) => {
+      let body: z.infer<typeof importSongsSchema>;
+      try {
+        body = importSongsSchema.parse(request.body);
+      } catch (error) {
+        return invalidInput(reply, error as ZodError);
+      }
+
+      const groupId = await songs.getSingleGroupId(db);
+      const result = await songs.importSongs(db, {
+        groupId,
+        ownerId: request.user!.id,
+        data: body,
+      });
+
+      return reply.code(201).send({
+        imported: result.songs.length,
+        skippedArrangements: result.skippedArrangements,
+        songs: result.songs,
+      });
     },
   );
 

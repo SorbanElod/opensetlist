@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { ChevronRight, Plus, Search } from 'lucide-react';
+import { ChevronRight, Plus, Search, Upload } from 'lucide-react';
 
 import { ApiError } from '../api/client';
-import { listSongs, type Song } from '../api/songs';
+import { importSongsJson, listSongs, type Song } from '../api/songs';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 
 export function SongsPage() {
@@ -12,13 +12,19 @@ export function SongsPage() {
   const navigate = useNavigate();
   const [songs, setSongs] = useState<Song[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Subscribe pattern: setState only inside the promise callbacks, never
+  // synchronously in the effect body (react-hooks/set-state-in-effect).
   useEffect(() => {
     let cancelled = false;
     listSongs()
       .then((list) => {
-        if (!cancelled) setSongs(list);
+        if (cancelled) return;
+        setSongs(list);
+        setError(null);
       })
       .catch((err) => {
         if (!cancelled)
@@ -31,8 +37,46 @@ export function SongsPage() {
     };
   }, []);
 
+  // Refetch after import — called from an event handler, where setState is fine.
+  async function refresh() {
+    setSongs(await listSongs());
+  }
+
   const canEdit =
     auth.status === 'authenticated' && canWrite(role, auth.user.isSuperadmin);
+
+  async function onImportFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = ''; // allow re-importing the same file
+    if (!file) return;
+
+    setError(null);
+    setInfo(null);
+    try {
+      const text = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsText(file);
+      });
+      const result = await importSongsJson(text);
+      await refresh();
+      setInfo(
+        `Imported ${result.imported} song(s)` +
+          (result.skippedArrangements > 0
+            ? ` — ${result.skippedArrangements} arrangement(s) skipped until P2.3`
+            : ''),
+      );
+    } catch (err) {
+      setError(
+        err instanceof ApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Import failed',
+      );
+    }
+  }
 
   const filtered = (songs ?? []).filter((s) =>
     `${s.title} ${s.author ?? ''}`
@@ -45,13 +89,30 @@ export function SongsPage() {
       <div className="mb-4 flex items-center justify-between gap-2">
         <h1 className="text-[22px] font-bold tracking-tight">Songs</h1>
         {canEdit && (
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => navigate('/songs/new')}
-          >
-            <Plus size={15} /> New song
-          </button>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload size={15} /> Import JSON
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => navigate('/songs/new')}
+            >
+              <Plus size={15} /> New song
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              aria-label="Import songs from JSON"
+              onChange={onImportFile}
+            />
+          </div>
         )}
       </div>
 
@@ -74,6 +135,14 @@ export function SongsPage() {
         <div className="error-banner" role="alert">
           {error}
         </div>
+      )}
+      {info && (
+        <p
+          role="status"
+          className="mb-3 rounded-lg border border-accent-border bg-accent-soft px-3 py-2 text-[12.5px] text-accent"
+        >
+          {info}
+        </p>
       )}
 
       {songs === null && !error && (
