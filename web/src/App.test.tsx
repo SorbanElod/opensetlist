@@ -35,7 +35,13 @@ describe('session gate', () => {
   it('lands in the app shell when the session cookie is valid (refresh keeps the session)', async () => {
     stubFetch((path) =>
       path === '/api/auth/me'
-        ? { status: 200, body: { user: USER } }
+        ? {
+            status: 200,
+            body: {
+              user: USER,
+              memberships: [{ groupId: 'g1', role: 'group_manager' }],
+            },
+          }
         : { status: 404, body: {} },
     );
 
@@ -52,7 +58,13 @@ describe('login flow', () => {
       if (path === '/api/auth/me')
         return { status: 401, body: { message: 'Not authenticated' } };
       if (path === '/api/auth/login')
-        return { status: 200, body: { user: USER } };
+        return {
+          status: 200,
+          body: {
+            user: USER,
+            memberships: [{ groupId: 'g1', role: 'group_manager' }],
+          },
+        };
       return { status: 404, body: {} };
     });
 
@@ -92,7 +104,14 @@ describe('login flow', () => {
 describe('logout flow', () => {
   it('logs out and returns to /login', async () => {
     stubFetch((path) => {
-      if (path === '/api/auth/me') return { status: 200, body: { user: USER } };
+      if (path === '/api/auth/me')
+        return {
+          status: 200,
+          body: {
+            user: USER,
+            memberships: [{ groupId: 'g1', role: 'group_manager' }],
+          },
+        };
       if (path === '/api/auth/logout')
         return { status: 200, body: { status: 'ok' } };
       return { status: 404, body: {} };
@@ -109,7 +128,13 @@ describe('theme', () => {
   it('toggles data-theme on <html> and persists the choice', async () => {
     stubFetch((path) =>
       path === '/api/auth/me'
-        ? { status: 200, body: { user: USER } }
+        ? {
+            status: 200,
+            body: {
+              user: USER,
+              memberships: [{ groupId: 'g1', role: 'group_manager' }],
+            },
+          }
         : { status: 404, body: {} },
     );
 

@@ -22,7 +22,10 @@ export class ApiError extends Error {
 
 export async function apiFetch<T>(
   path: string,
-  options: { method?: 'GET' | 'POST'; body?: unknown } = {},
+  options: {
+    method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+    body?: unknown;
+  } = {},
 ): Promise<T> {
   const response = await fetch(path, {
     method: options.method ?? 'GET',

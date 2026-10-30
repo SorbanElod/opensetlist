@@ -28,6 +28,10 @@
     {
       "key": "memberId",
       "value": ""
+    },
+    {
+      "key": "songId",
+      "value": ""
     }
   ],
   "item": [
@@ -84,7 +88,7 @@
                   "value": "opensetlist_session=<43-char-token>; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000"
                 }
               ],
-              "body": "{\n  \"user\": {\n    \"id\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n    \"email\": \"elod@example.com\",\n    \"name\": \"Elod\",\n    \"isSuperadmin\": false\n  }\n}"
+              "body": "{\n  \"user\": {\n    \"id\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n    \"email\": \"elod@example.com\",\n    \"name\": \"Elod\",\n    \"isSuperadmin\": false\n  },\n  \"memberships\": [\n    {\n      \"groupId\": \"9a8b7c6d-3333-4ddd-8eee-000000000001\",\n      \"role\": \"group_manager\"\n    }\n  ]\n}"
             },
             {
               "name": "400 Invalid input",
@@ -148,7 +152,7 @@
                   "value": "opensetlist_session=<43-char-token>; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000"
                 }
               ],
-              "body": "{\n  \"user\": {\n    \"id\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n    \"email\": \"elod@example.com\",\n    \"name\": \"Elod\",\n    \"isSuperadmin\": false\n  }\n}"
+              "body": "{\n  \"user\": {\n    \"id\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n    \"email\": \"elod@example.com\",\n    \"name\": \"Elod\",\n    \"isSuperadmin\": false\n  },\n  \"memberships\": [\n    {\n      \"groupId\": \"9a8b7c6d-3333-4ddd-8eee-000000000001\",\n      \"role\": \"group_manager\"\n    }\n  ]\n}"
             },
             {
               "name": "401 Invalid credentials",
@@ -187,7 +191,7 @@
                   "value": "application/json; charset=utf-8"
                 }
               ],
-              "body": "{\n  \"user\": {\n    \"id\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n    \"email\": \"elod@example.com\",\n    \"name\": \"Elod\",\n    \"isSuperadmin\": false\n  }\n}"
+              "body": "{\n  \"user\": {\n    \"id\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n    \"email\": \"elod@example.com\",\n    \"name\": \"Elod\",\n    \"isSuperadmin\": false\n  },\n  \"memberships\": [\n    {\n      \"groupId\": \"9a8b7c6d-3333-4ddd-8eee-000000000001\",\n      \"role\": \"group_manager\"\n    }\n  ]\n}"
             },
             {
               "name": "401 Not authenticated",
@@ -433,6 +437,244 @@
                 }
               ],
               "body": "{\n  \"message\": \"Cannot remove the last group_manager of the group\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "songs",
+      "item": [
+        {
+          "name": "List songs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/songs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "songs"]
+            },
+            "description": "All songs of the group, newest first. Any role incl. reader; 401 when anonymous."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"songs\": [\n    {\n      \"id\": \"5e4d3c2b-4444-4fff-8aaa-000000000001\",\n      \"title\": \"Amazing Grace\",\n      \"author\": \"John Newton\",\n      \"defaultKey\": \"G\",\n      \"visibility\": \"group\",\n      \"language\": \"en\",\n      \"ownerId\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n      \"version\": 1,\n      \"createdAt\": \"2026-10-30T10:00:00.000Z\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "401 Not authenticated",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Not authenticated\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create song",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 + songId saved', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.collectionVariables.set('songId', pm.response.json().song.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/songs",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "songs"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Amazing Grace\",\n  \"author\": \"John Newton\",\n  \"defaultKey\": \"G\",\n  \"visibility\": \"group\",\n  \"language\": \"en\"\n}"
+            },
+            "description": "member+ only (403 for readers). defaultKey must be one of C C# D Eb E F F# G Ab A Bb B; language is an optional 2-letter ISO 639-1 code."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"song\": {\n    \"id\": \"5e4d3c2b-4444-4fff-8aaa-000000000001\",\n    \"title\": \"Amazing Grace\",\n    \"author\": \"John Newton\",\n    \"defaultKey\": \"G\",\n    \"visibility\": \"group\",\n    \"language\": \"en\",\n    \"ownerId\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n    \"version\": 1,\n    \"createdAt\": \"2026-10-30T10:00:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "400 Invalid input",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Invalid input\",\n  \"issues\": [\n    { \"path\": \"defaultKey\", \"message\": \"Invalid enum value\" },\n    { \"path\": \"language\", \"message\": \"Use a 2-letter ISO 639-1 code, e.g. \\\"hu\\\"\" }\n  ]\n}"
+            },
+            {
+              "name": "403 Forbidden (reader)",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Forbidden\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get song",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/songs/{{songId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "songs", "{{songId}}"]
+            },
+            "description": "Any role incl. reader. 404 when the id is unknown or belongs to another group."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"song\": {\n    \"id\": \"5e4d3c2b-4444-4fff-8aaa-000000000001\",\n    \"title\": \"Amazing Grace\",\n    \"author\": \"John Newton\",\n    \"defaultKey\": \"G\",\n    \"visibility\": \"group\",\n    \"language\": \"en\",\n    \"ownerId\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n    \"version\": 1,\n    \"createdAt\": \"2026-10-30T10:00:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "404 Not found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Song not found\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update song",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/songs/{{songId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "songs", "{{songId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Amazing Grace (reprise)\",\n  \"language\": \"hu\",\n  \"version\": 1\n}"
+            },
+            "description": "member+ only. All fields optional, but version is required — send the version you last saw. The server check-and-bumps; a stale version gets 409 (optimistic locking)."
+          },
+          "response": [
+            {
+              "name": "200 OK (version bumped)",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"song\": {\n    \"id\": \"5e4d3c2b-4444-4fff-8aaa-000000000001\",\n    \"title\": \"Amazing Grace (reprise)\",\n    \"author\": \"John Newton\",\n    \"defaultKey\": \"G\",\n    \"visibility\": \"group\",\n    \"language\": \"hu\",\n    \"ownerId\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n    \"version\": 2,\n    \"createdAt\": \"2026-10-30T10:00:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "409 Conflict (stale version)",
+              "status": "Conflict",
+              "code": 409,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Song was modified by someone else — reload and try again\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete song",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/songs/{{songId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "songs", "{{songId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": 1\n}"
+            },
+            "description": "member+ only, version-checked like PATCH. Arrangements of the song cascade-delete."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"status\": \"ok\"\n}"
+            },
+            {
+              "name": "409 Conflict (stale version)",
+              "status": "Conflict",
+              "code": 409,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Song was modified by someone else — reload and try again\"\n}"
             }
           ]
         }

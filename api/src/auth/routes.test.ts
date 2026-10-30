@@ -118,6 +118,22 @@ describe.skipIf(!dbUrl)('auth routes', () => {
     expect(me.json().user.email).toBe(email);
   });
 
+  it('me returns memberships — the caller role per group', async () => {
+    const email = newEmail();
+    const res = await register(email);
+
+    const me = await meWith(sessionCookie(res));
+    expect(me.statusCode).toBe(200);
+    const body = me.json();
+    expect(body.user.email).toBe(email);
+    expect(Array.isArray(body.memberships)).toBe(true);
+    expect(body.memberships).toHaveLength(1);
+    expect(typeof body.memberships[0].groupId).toBe('string');
+    expect(['reader', 'member', 'group_manager']).toContain(
+      body.memberships[0].role,
+    );
+  });
+
   it('rejects wrong password and unknown email with the same message', async () => {
     const email = newEmail();
     await register(email);

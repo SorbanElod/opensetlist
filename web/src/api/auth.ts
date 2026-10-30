@@ -8,37 +8,43 @@ export type PublicUser = {
   isSuperadmin: boolean;
 };
 
+// Mirrors GroupRole in api/src/auth/authorize.ts.
+export type GroupRole = 'reader' | 'member' | 'group_manager';
+
+// One entry per group the user belongs to — multi-group-ready shape.
+export type Membership = { groupId: string; role: GroupRole };
+
+// register/login/me all return this shape.
+export type MeResponse = { user: PublicUser; memberships: Membership[] };
+
 export async function login(
   email: string,
   password: string,
-): Promise<PublicUser> {
-  const { user } = await apiFetch<{ user: PublicUser }>('/api/auth/login', {
+): Promise<MeResponse> {
+  return apiFetch<MeResponse>('/api/auth/login', {
     method: 'POST',
     body: { email, password },
   });
-  return user;
 }
 
 export async function register(input: {
   name: string;
   email: string;
   password: string;
-}): Promise<PublicUser> {
+}): Promise<MeResponse> {
   // The API auto-logs in on register (sets the session cookie).
-  const { user } = await apiFetch<{ user: PublicUser }>('/api/auth/register', {
+  return apiFetch<MeResponse>('/api/auth/register', {
     method: 'POST',
     body: input,
   });
-  return user;
 }
 
 export async function logout(): Promise<void> {
   await apiFetch<{ status: string }>('/api/auth/logout', { method: 'POST' });
 }
 
-export async function getMe(): Promise<PublicUser> {
-  const { user } = await apiFetch<{ user: PublicUser }>('/api/auth/me');
-  return user;
+export async function getMe(): Promise<MeResponse> {
+  return apiFetch<MeResponse>('/api/auth/me');
 }
 
 // Client-side mirror of registerSchema in api/src/auth/schemas.ts: fail fast
