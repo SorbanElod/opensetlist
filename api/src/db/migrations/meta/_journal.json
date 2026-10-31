@@ -15,6 +15,13 @@
       "when": 1793389693337,
       "tag": "0001_wakeful_mattie_franklin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793465678160,
+      "tag": "0002_chilly_leper_queen",
+      "breakpoints": true
     }
   ]
 }

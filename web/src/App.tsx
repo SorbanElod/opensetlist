@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { AppShell } from './components/AppShell';
+import { ArrangementEditorPage } from './pages/ArrangementEditorPage';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -70,6 +71,14 @@ export function AppRoutes() {
         <Route path="songs/new" element={<SongFormPage />} />
         <Route path="songs/:id" element={<SongDetailPage />} />
         <Route path="songs/:id/edit" element={<SongFormPage />} />
+        <Route
+          path="songs/:songId/arrangements/new"
+          element={<ArrangementEditorPage />}
+        />
+        <Route
+          path="arrangements/:id/edit"
+          element={<ArrangementEditorPage />}
+        />
         {/* Unknown deep links land on home (still gated). */}
         <Route path="*" element={<HomePage />} />
       </Route>

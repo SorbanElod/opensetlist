@@ -82,7 +82,8 @@ export const songsRoutes: FastifyPluginAsync<SongsOptions> = async (
 
       return reply.code(201).send({
         imported: result.songs.length,
-        skippedArrangements: result.skippedArrangements,
+        arrangementsImported: result.arrangementsImported,
+        skippedTags: result.skippedTags,
         songs: result.songs,
       });
     },

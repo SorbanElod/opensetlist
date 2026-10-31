@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { ArrowLeft, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-react';
 
 import { ApiError } from '../api/client';
+import { listArrangements, type Arrangement } from '../api/arrangements';
 import { deleteSong, getSong, type Song } from '../api/songs';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 
@@ -13,6 +14,7 @@ export function SongDetailPage() {
   const navigate = useNavigate();
 
   const [song, setSong] = useState<Song | null>(null);
+  const [arrangements, setArrangements] = useState<Arrangement[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -29,6 +31,13 @@ export function SongDetailPage() {
           setError(
             err instanceof ApiError ? err.message : 'Failed to load song',
           );
+      });
+    listArrangements(id)
+      .then((list) => {
+        if (!cancelled) setArrangements(list);
+      })
+      .catch(() => {
+        if (!cancelled) setArrangements([]);
       });
     return () => {
       cancelled = true;
@@ -134,9 +143,58 @@ export function SongDetailPage() {
             </div>
           </dl>
 
-          <p className="mt-4 text-[11.5px] text-subtle">
-            Arrangements &amp; ABC sections land in P2.3.
-          </p>
+          <div className="mt-6">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h2 className="text-[15px] font-semibold">Arrangements</h2>
+              {canEdit && (
+                <Link
+                  to={`/songs/${song.id}/arrangements/new`}
+                  className="btn btn-outline"
+                >
+                  <Plus size={14} /> New arrangement
+                </Link>
+              )}
+            </div>
+
+            {arrangements === null && (
+              <p className="text-[13px] text-muted">Loading…</p>
+            )}
+            {arrangements !== null && arrangements.length === 0 && (
+              <p className="text-[13px] text-muted">
+                No arrangements yet — the music lives here.
+              </p>
+            )}
+
+            <ul className="flex flex-col gap-1.5">
+              {arrangements?.map((a) => (
+                <li
+                  key={a.id}
+                  className="card flex items-center gap-3 rounded-xl px-4 py-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13.5px] font-semibold">
+                      {a.title}
+                    </p>
+                    <p className="truncate font-mono text-[11.5px] text-muted">
+                      {a.originalKey}
+                      {a.bpm !== null ? ` · ${a.bpm} BPM` : ''} ·{' '}
+                      {a.sections.length} section
+                      {a.sections.length === 1 ? '' : 's'}
+                    </p>
+                  </div>
+                  {canEdit && (
+                    <Link
+                      to={`/arrangements/${a.id}/edit`}
+                      className="btn btn-outline shrink-0"
+                      aria-label={`Edit ${a.title}`}
+                    >
+                      <Pencil size={14} /> Edit
+                    </Link>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
     </div>

@@ -100,7 +100,12 @@ describe('SongsPage', () => {
       if (path === '/api/songs/import')
         return {
           status: 201,
-          body: { imported: 1, skippedArrangements: 3, songs: [SONGS[0]] },
+          body: {
+            imported: 1,
+            arrangementsImported: 3,
+            skippedTags: 2,
+            songs: [SONGS[0]],
+          },
         };
       if (path === '/api/songs' && (!init?.method || init.method === 'GET'))
         return { status: 200, body: { songs: [SONGS[0]] } };
@@ -117,8 +122,10 @@ describe('SongsPage', () => {
     fireEvent.change(input, { target: { files: [file] } });
 
     const status = await screen.findByRole('status');
-    expect(status.textContent).toContain('Imported 1 song');
-    expect(status.textContent).toContain('3 arrangement(s) skipped');
+    expect(status.textContent).toContain(
+      'Imported 1 song(s), 3 arrangement(s)',
+    );
+    expect(status.textContent).toContain('2 tag(s) skipped');
 
     const importCall = fn.mock.calls.find(
       ([p]) => String(p) === '/api/songs/import',

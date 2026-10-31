@@ -79,7 +79,8 @@ export async function deleteSong(id: string, version: number): Promise<void> {
 
 export type ImportSongsResult = {
   imported: number;
-  skippedArrangements: number;
+  arrangementsImported: number;
+  skippedTags: number;
   songs: Song[];
 };
 
