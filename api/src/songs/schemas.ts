@@ -8,6 +8,11 @@ import {
   sectionSchema,
   type CreateArrangementInput,
 } from '../arrangements/schemas.js';
+import {
+  MAX_TAGS_PER_SONG,
+  tagNameSchema,
+  tagsFieldSchema,
+} from '../tags/schemas.js';
 import { KEYS, keySchema } from './keys.js';
 
 // Validation at the edges: everything crossing the HTTP boundary is parsed
@@ -27,12 +32,56 @@ export const languageSchema = z
   .string()
   .regex(/^[a-z]{2}$/, 'Use a 2-letter ISO 639-1 code, e.g. "hu"');
 
+// --- Song query filter: a small recursive tree ----------------------------
+// leaf: { search?, tagsAll?, tagsAny? } — every present field must match
+// node: { and: [...] } | { or: [...] } — children combine with AND / OR.
+// Arbitrary nesting; the service lowers it to plain Drizzle SQL conditions.
+export type FilterLeaf = {
+  search?: string;
+  tagsAll?: string[];
+  tagsAny?: string[];
+};
+export type FilterNode =
+  FilterLeaf | { and: FilterNode[] } | { or: FilterNode[] };
+
+const MAX_FILTER_CHILDREN = 20;
+
+const filterLeafSchema = z
+  .object({
+    search: z.string().trim().max(200).optional(),
+    tagsAll: z.array(tagNameSchema).max(MAX_TAGS_PER_SONG).optional(),
+    tagsAny: z.array(tagNameSchema).max(MAX_TAGS_PER_SONG).optional(),
+  })
+  .refine(
+    (leaf) =>
+      leaf.search !== undefined ||
+      (leaf.tagsAll?.length ?? 0) > 0 ||
+      (leaf.tagsAny?.length ?? 0) > 0,
+    { message: 'Filter leaf needs at least one of search / tagsAll / tagsAny' },
+  );
+
+export const filterSchema: z.ZodType<FilterNode> = z.lazy(() =>
+  z.union([
+    filterLeafSchema,
+    z.object({ and: z.array(filterSchema).min(1).max(MAX_FILTER_CHILDREN) }),
+    z.object({ or: z.array(filterSchema).min(1).max(MAX_FILTER_CHILDREN) }),
+  ]),
+);
+
+// POST /api/songs/query body. No filter = the whole library.
+export const querySongsSchema = z.object({
+  filter: filterSchema.optional(),
+});
+
 export const createSongSchema = z.object({
   title: z.string().trim().min(1, 'Title is required').max(200),
   author: z.string().trim().max(200).optional(),
   defaultKey: keySchema,
   visibility: visibilitySchema.default('group'),
   language: languageSchema.optional(),
+  // Tag names; normalized + deduped by tagsFieldSchema, created inline
+  // (idempotently) by the service when the song is written.
+  tags: tagsFieldSchema.default([]),
 });
 
 // Every field optional except version: the client sends the version it last
@@ -52,7 +101,7 @@ export type UpdateSongInput = z.infer<typeof updateSongSchema>;
 // UI is post-alpha). Tolerant of the draft seed format: zod strips unknown
 // keys. Arrangements are imported — transformed to the API shape and piped
 // through createArrangementSchema, so the cross-field rules (unique labels,
-// sequence ⊆ labels) apply here too. Tags are accepted but skipped (#20).
+// sequence ⊆ labels) apply here too. Tags are stored as well (#20).
 export const importSongsSchema = z.object({
   songs: z
     .array(
@@ -97,7 +146,7 @@ export const importSongsSchema = z.object({
               .pipe(createArrangementSchema),
           )
           .optional(),
-        tags: z.array(z.string()).optional(), // not stored yet (#20)
+        tags: tagsFieldSchema.optional(),
       }),
     )
     .min(1)

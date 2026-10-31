@@ -8,6 +8,7 @@ import {
   createSongSchema,
   deleteSongSchema,
   importSongsSchema,
+  querySongsSchema,
   updateSongSchema,
 } from './schemas.js';
 import * as songs from './service.js';
@@ -36,6 +37,25 @@ export const songsRoutes: FastifyPluginAsync<SongsOptions> = async (
 
     return { songs: await songs.listSongs(db, groupId) };
   });
+
+  // Filtered list: POST with a filter tree in the body (and/or/search/tagsAll/
+  // tagsAny). A body is the right carrier for a structured query — GET stays
+  // for the unfiltered list.
+  app.post(
+    '/api/songs/query',
+    { preHandler: authorize(db, 'reader') },
+    async (request, reply) => {
+      let body: z.infer<typeof querySongsSchema>;
+      try {
+        body = querySongsSchema.parse(request.body);
+      } catch (error) {
+        return invalidInput(reply, error as ZodError);
+      }
+
+      const groupId = await songs.getSingleGroupId(db);
+      return { songs: await songs.listSongs(db, groupId, body.filter) };
+    },
+  );
 
   app.post(
     '/api/songs',
@@ -83,7 +103,7 @@ export const songsRoutes: FastifyPluginAsync<SongsOptions> = async (
       return reply.code(201).send({
         imported: result.songs.length,
         arrangementsImported: result.arrangementsImported,
-        skippedTags: result.skippedTags,
+        tagsImported: result.tagsImported,
         songs: result.songs,
       });
     },
@@ -119,6 +139,7 @@ export const songsRoutes: FastifyPluginAsync<SongsOptions> = async (
       const result = await songs.updateSong(db, {
         groupId,
         id: request.params.id,
+        actorId: request.user!.id,
         song: body,
       });
 
