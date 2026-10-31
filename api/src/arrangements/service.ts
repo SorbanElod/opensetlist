@@ -1,11 +1,7 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
 
 import type { Db } from '../db/index.js';
-import {
-  arrangements,
-  songs,
-  type ArrangementSection,
-} from '../db/schema.js';
+import { arrangements, songs, type ArrangementSection } from '../db/schema.js';
 import { getSong } from '../songs/service.js';
 import type {
   CreateArrangementInput,
@@ -29,8 +25,7 @@ export type ArrangementResult =
   | { ok: false; reason: 'not_found' | 'conflict' };
 
 export type DeleteResult =
-  | { ok: true; id: string }
-  | { ok: false; reason: 'not_found' | 'conflict' };
+  { ok: true; id: string } | { ok: false; reason: 'not_found' | 'conflict' };
 
 // Arrangements carry no group_id — group scoping goes through the parent
 // song (and arrangements cascade on song delete).
@@ -71,7 +66,11 @@ export async function getArrangement(
 
 export async function createArrangement(
   db: Db,
-  input: { groupId: string; songId: string; arrangement: CreateArrangementInput },
+  input: {
+    groupId: string;
+    songId: string;
+    arrangement: CreateArrangementInput;
+  },
 ): Promise<ArrangementView | null> {
   const song = await getSong(db, input.groupId, input.songId);
   if (!song) return null;

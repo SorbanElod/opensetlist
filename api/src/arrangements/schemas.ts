@@ -74,8 +74,9 @@ const arrangementBodySchema = z.object({
     ),
 });
 
-export const createArrangementSchema =
-  arrangementBodySchema.superRefine(validateAgainstSections);
+export const createArrangementSchema = arrangementBodySchema.superRefine(
+  validateAgainstSections,
+);
 
 // The section editor always submits the whole arrangement at once, so PATCH
 // takes the full body plus version (optimistic locking) — no partial-update

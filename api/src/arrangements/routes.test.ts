@@ -163,7 +163,9 @@ describe.skipIf(!dbUrl)('arrangements routes', () => {
     });
     expect(list.statusCode).toBe(200);
     expect(
-      list.json().arrangements.some((a: { id: string }) => a.id === arrangement.id),
+      list
+        .json()
+        .arrangements.some((a: { id: string }) => a.id === arrangement.id),
     ).toBe(true);
 
     const got = await app.inject({
