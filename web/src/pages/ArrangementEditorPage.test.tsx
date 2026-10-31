@@ -25,6 +25,7 @@ const SONG = {
   ownerId: 'u1',
   version: 1,
   createdAt: '2026-10-28T10:00:00.000Z',
+  tags: [],
 };
 
 const ARRANGEMENT = {

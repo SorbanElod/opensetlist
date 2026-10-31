@@ -22,6 +22,7 @@ const SONG = {
   ownerId: 'u1',
   version: 1,
   createdAt: '2026-10-28T10:00:00.000Z',
+  tags: [],
 };
 
 const meMember = (path: string) =>
@@ -106,5 +107,58 @@ describe('SongFormPage', () => {
 
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain('modified by someone else');
+  });
+
+  it('adds tags via the token input (autocomplete + typed new) and sends them on submit', async () => {
+    let posted: unknown;
+    stubFetch((path, init) => {
+      const me = meMember(path);
+      if (me) return me;
+      if (path === '/api/tags')
+        return {
+          status: 200,
+          body: {
+            tags: [
+              {
+                id: 't1',
+                name: 'easter',
+                createdAt: '2026-10-28T10:00:00.000Z',
+              },
+            ],
+          },
+        };
+      if (path === '/api/songs' && init?.method === 'POST') {
+        posted = JSON.parse(String(init.body));
+        return {
+          status: 201,
+          body: {
+            song: { ...SONG, tags: (posted as { tags?: string[] }).tags ?? [] },
+          },
+        };
+      }
+      if (path === '/api/songs/s1')
+        return { status: 200, body: { song: SONG } };
+      return { status: 404, body: {} };
+    });
+
+    renderApp('/songs/new');
+    fireEvent.change(await screen.findByLabelText('Title'), {
+      target: { value: 'Amazing Grace' },
+    });
+
+    // Pick the existing tag from the autocomplete.
+    const tagInput = screen.getByLabelText('Tags');
+    fireEvent.change(tagInput, { target: { value: 'eas' } });
+    fireEvent.mouseDown(await screen.findByText('easter'));
+    expect(await screen.findByLabelText('Remove tag easter')).toBeTruthy();
+
+    // Type a brand-new tag; Enter commits it, normalized to lowercase.
+    fireEvent.change(tagInput, { target: { value: 'Campfire' } });
+    fireEvent.keyDown(tagInput, { key: 'Enter' });
+    expect(screen.getByLabelText('Remove tag campfire')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: /save song/i }));
+    await screen.findByRole('heading', { name: 'Amazing Grace' });
+    expect((posted as { tags: string[] }).tags).toEqual(['easter', 'campfire']);
   });
 });

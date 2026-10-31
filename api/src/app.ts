@@ -5,6 +5,7 @@ import { arrangementsRoutes } from './arrangements/routes.js';
 import { authRoutes } from './auth/routes.js';
 import { membersRoutes } from './members/routes.js';
 import { songsRoutes } from './songs/routes.js';
+import { tagsRoutes } from './tags/routes.js';
 import type { Env } from './config.js';
 import type { Db } from './db/index.js';
 
@@ -21,6 +22,7 @@ export async function buildApp(env: Env, db: Db) {
   await app.register(membersRoutes, { db });
   await app.register(songsRoutes, { db });
   await app.register(arrangementsRoutes, { db });
+  await app.register(tagsRoutes, { db });
 
   app.get('/healthz', async () => ({ status: 'ok' }));
 
