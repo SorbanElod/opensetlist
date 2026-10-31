@@ -179,7 +179,11 @@ export const arrangements = pgTable(
     title: text('title').notNull(),
     originalKey: text('original_key').notNull(),
     bpm: integer('bpm'),
-    defaultSequence: text('default_sequence').notNull(),
+    // text[] (Postgres-native array), not JSON-in-text: the sequence holds
+    // section labels, and a real array column stays queryable SQL while
+    // Drizzle maps it to string[] with no parsing. Changed from text in
+    // the P2.3 migration (approved in issue #9 discussion).
+    defaultSequence: text('default_sequence').array().notNull(),
     sections: jsonb('sections').$type<ArrangementSection[]>().notNull(),
     version: integer('version').notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true })

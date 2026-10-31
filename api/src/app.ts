@@ -1,6 +1,7 @@
 import cookie from '@fastify/cookie';
 import Fastify from 'fastify';
 
+import { arrangementsRoutes } from './arrangements/routes.js';
 import { authRoutes } from './auth/routes.js';
 import { membersRoutes } from './members/routes.js';
 import { songsRoutes } from './songs/routes.js';
@@ -19,6 +20,7 @@ export async function buildApp(env: Env, db: Db) {
   await app.register(authRoutes, { db });
   await app.register(membersRoutes, { db });
   await app.register(songsRoutes, { db });
+  await app.register(arrangementsRoutes, { db });
 
   app.get('/healthz', async () => ({ status: 'ok' }));
 
