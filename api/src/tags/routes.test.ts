@@ -103,6 +103,42 @@ describe.skipIf(!dbUrl)('tags routes', () => {
     }
   });
 
+  it('searches tags server-side via ?search= (substring, normalized input)', async () => {
+    const { token } = await registerUser();
+    const cookies = { [auth.SESSION_COOKIE]: token };
+    const suffix = randomUUID().slice(0, 8);
+
+    await app.inject({
+      method: 'POST',
+      url: '/api/songs',
+      payload: {
+        title: `Searchable ${suffix}`,
+        defaultKey: 'G',
+        visibility: 'group',
+        tags: [`easter-${suffix}`, `campfire-${suffix}`],
+      },
+      cookies,
+    });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/tags?search=EASTER-${suffix.toUpperCase()}`,
+      cookies,
+    });
+    expect(res.statusCode).toBe(200);
+    const names = res.json().tags.map((t: { name: string }) => t.name);
+    expect(names).toContain(`easter-${suffix}`);
+    expect(names).not.toContain(`campfire-${suffix}`);
+
+    // over-long search is rejected with 400
+    const bad = await app.inject({
+      method: 'GET',
+      url: `/api/tags?search=${'x'.repeat(41)}`,
+      cookies,
+    });
+    expect(bad.statusCode).toBe(400);
+  });
+
   it('creates tags inline with songs (normalized + deduped), deletes only for group_manager, cascades to songs', async () => {
     const { token, user } = await registerUser();
     const cookies = { [auth.SESSION_COOKIE]: token };

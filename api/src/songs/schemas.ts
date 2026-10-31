@@ -40,6 +40,7 @@ export type FilterLeaf = {
   search?: string;
   tagsAll?: string[];
   tagsAny?: string[];
+  tagsLike?: string;
 };
 export type FilterNode =
   FilterLeaf | { and: FilterNode[] } | { or: FilterNode[] };
@@ -51,13 +52,19 @@ const filterLeafSchema = z
     search: z.string().trim().max(200).optional(),
     tagsAll: z.array(tagNameSchema).max(MAX_TAGS_PER_SONG).optional(),
     tagsAny: z.array(tagNameSchema).max(MAX_TAGS_PER_SONG).optional(),
+    // substring match on tag names — "christ" matches "christmas"
+    tagsLike: z.string().trim().min(1).max(40).optional(),
   })
   .refine(
     (leaf) =>
       leaf.search !== undefined ||
       (leaf.tagsAll?.length ?? 0) > 0 ||
-      (leaf.tagsAny?.length ?? 0) > 0,
-    { message: 'Filter leaf needs at least one of search / tagsAll / tagsAny' },
+      (leaf.tagsAny?.length ?? 0) > 0 ||
+      leaf.tagsLike !== undefined,
+    {
+      message:
+        'Filter leaf needs at least one of search / tagsAll / tagsAny / tagsLike',
+    },
   );
 
 export const filterSchema: z.ZodType<FilterNode> = z.lazy(() =>

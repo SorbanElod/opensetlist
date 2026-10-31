@@ -130,6 +130,23 @@ function filterToSql(
       ),
     );
   }
+  if (node.tagsLike) {
+    conds.push(
+      inArray(
+        songs.id,
+        db
+          .select({ songId: songTags.songId })
+          .from(songTags)
+          .innerJoin(tags, eq(songTags.tagId, tags.id))
+          .where(
+            and(
+              eq(tags.groupId, groupId),
+              ilike(tags.name, `%${node.tagsLike}%`),
+            ),
+          ),
+      ),
+    );
+  }
   return and(...conds);
 }
 

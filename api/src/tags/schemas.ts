@@ -17,3 +17,9 @@ export const tagsFieldSchema = z
   .array(tagNameSchema)
   .max(MAX_TAGS_PER_SONG, `At most ${MAX_TAGS_PER_SONG} tags per song`)
   .transform((names) => [...new Set(names)]);
+
+// GET /api/tags?search=… — server-side tag search so the picker never loads
+// the whole vocabulary (hundreds of tags stay usable).
+export const listTagsQuerySchema = z.object({
+  search: z.string().trim().max(40).optional(),
+});

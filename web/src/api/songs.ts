@@ -52,6 +52,7 @@ export type SongFilterLeaf = {
   search?: string;
   tagsAll?: string[];
   tagsAny?: string[];
+  tagsLike?: string;
 };
 export type SongFilter =
   SongFilterLeaf | { and: SongFilter[] } | { or: SongFilter[] };

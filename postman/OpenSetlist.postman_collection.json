@@ -501,7 +501,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "songs", "query"]
             },
-            "description": "reader+. Body carries a filter tree — leaves { search?, tagsAll?, tagsAny? } combine with { and: [...] } / { or: [...] }, nestable. tagsAll = song has EVERY listed tag (AND), tagsAny = at least one (OR); names are normalized (trim + lowercase). No filter = whole library.",
+            "description": "reader+. Body carries a filter tree — leaves { search?, tagsAll?, tagsAny?, tagsLike? } combine with { and: [...] } / { or: [...] }, nestable. tagsAll = song has EVERY listed tag (AND), tagsAny = at least one (OR), tagsLike = substring match on tag names (\"christ\" matches \"christmas\"); names are normalized (trim + lowercase). No filter = whole library.",
             "header": [
               {
                 "key": "Content-Type",
@@ -510,7 +510,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"filter\": {\n    \"and\": [\n      {\n        \"search\": \"grace\"\n      },\n      {\n        \"tagsAll\": [\n          \"easter\"\n        ]\n      },\n      {\n        \"or\": [\n          {\n            \"tagsAny\": [\n              \"campfire\",\n              \"youth\"\n            ]\n          }\n        ]\n      }\n    ]\n  }\n}"
+              "raw": "{\n  \"filter\": {\n    \"and\": [\n      {\n        \"search\": \"grace\"\n      },\n      {\n        \"tagsAll\": [\n          \"easter\"\n        ]\n      },\n      {\n        \"or\": [\n          {\n            \"tagsAny\": [\n              \"campfire\",\n              \"youth\"\n            ]\n          },\n          {\n            \"tagsLike\": \"christ\"\n          }\n        ]\n      }\n    ]\n  }\n}"
             }
           },
           "response": [
@@ -1136,6 +1136,51 @@
                 }
               ],
               "body": "{\n  \"message\": \"Not authenticated\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Search tags",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/tags?search=eas",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tags"],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "eas",
+                  "description": "Substring match (ilike) on tag names, cap 20 results — keeps the picker usable with hundreds of tags. Omit for the whole vocabulary."
+                }
+              ]
+            },
+            "description": "reader+. Server-side tag search for the filter picker / autocomplete."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"tags\": [\n    {\n      \"id\": \"3c2b1a09-5555-4aaa-9bbb-000000000003\",\n      \"name\": \"easter\",\n      \"createdAt\": \"2026-10-31T10:00:00.000Z\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "400 Invalid input (search over 40 chars)",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Invalid input\",\n  \"issues\": [\n    {\n      \"path\": \"search\",\n      \"message\": \"String must contain at most 40 character(s)\"\n    }\n  ]\n}"
             }
           ]
         },

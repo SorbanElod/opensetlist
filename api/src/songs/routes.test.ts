@@ -424,6 +424,12 @@ describe.skipIf(!dbUrl)('songs routes', () => {
     expect(norm).toContain(a.title);
     expect(norm).toContain(b.title);
 
+    // tagsLike = substring match on tag names: "christ" matches "christmas"
+    const like = await query({ tagsLike: 'christ' });
+    expect(like).toContain(c.title);
+    expect(like).not.toContain(a.title);
+    expect(like).not.toContain(b.title);
+
     // an empty leaf is rejected with 400
     const bad = await app.inject({
       method: 'POST',

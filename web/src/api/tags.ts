@@ -7,8 +7,13 @@ export type Tag = {
   createdAt: string;
 };
 
-export async function listTags(): Promise<Tag[]> {
-  const { tags } = await apiFetch<{ tags: Tag[] }>('/api/tags');
+// search narrows server-side (ilike, cap 20) so the picker stays usable with
+// hundreds of tags.
+export async function listTags(search?: string): Promise<Tag[]> {
+  const qs = search?.trim()
+    ? `?search=${encodeURIComponent(search.trim())}`
+    : '';
+  const { tags } = await apiFetch<{ tags: Tag[] }>(`/api/tags${qs}`);
   return tags;
 }
 

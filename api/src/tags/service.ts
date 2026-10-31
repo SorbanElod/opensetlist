@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, ilike, type SQL } from 'drizzle-orm';
 
 import type { Db } from '../db/index.js';
 import { songTags, tags } from '../db/schema.js';
@@ -12,13 +12,19 @@ export type Queryable = Pick<Db, 'insert' | 'select' | 'delete'>;
 export async function listTags(
   db: Queryable,
   groupId: string,
+  search?: string,
 ): Promise<TagView[]> {
-  // Alphabetical — the vocabulary reads like a list, not a feed.
+  // Alphabetical — the vocabulary reads like a list, not a feed. The cap
+  // keeps the picker payload small when the group has hundreds of tags.
+  const conditions: (SQL | undefined)[] = [eq(tags.groupId, groupId)];
+  if (search?.trim()) conditions.push(ilike(tags.name, `%${search.trim()}%`));
+
   return db
     .select({ id: tags.id, name: tags.name, createdAt: tags.createdAt })
     .from(tags)
-    .where(eq(tags.groupId, groupId))
-    .orderBy(asc(tags.name));
+    .where(and(...conditions))
+    .orderBy(asc(tags.name))
+    .limit(20);
 }
 
 export async function deleteTag(

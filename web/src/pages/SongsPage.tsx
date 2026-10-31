@@ -1,6 +1,20 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type KeyboardEvent,
+} from 'react';
 import { Link, useNavigate } from 'react-router';
-import { Check, ChevronRight, Plus, Search, Upload, X } from 'lucide-react';
+import {
+  Check,
+  ChevronRight,
+  Plus,
+  Search,
+  Trash2,
+  Upload,
+  X,
+} from 'lucide-react';
 
 import { ApiError } from '../api/client';
 import {
@@ -17,12 +31,15 @@ export function SongsPage() {
   const role = useMyRole();
   const navigate = useNavigate();
   const [songs, setSongs] = useState<Song[] | null>(null);
-  const [allTags, setAllTags] = useState<Tag[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagLike, setTagLike] = useState<string | null>(null);
   const [matchAll, setMatchAll] = useState(true);
+  const [tagInput, setTagInput] = useState('');
+  const [tagSuggestions, setTagSuggestions] = useState<Tag[]>([]);
+  const [tagMenuOpen, setTagMenuOpen] = useState(false);
   const [confirmingTag, setConfirmingTag] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -32,20 +49,25 @@ export function SongsPage() {
   const canManageTags =
     auth.status === 'authenticated' && canManage(role, auth.user.isSuperadmin);
 
-  // The tag vocabulary (autocomplete/filter source) loads once.
+  // Tag picker suggestions: debounced server-side search, so the picker works
+  // with hundreds of tags without loading the whole vocabulary.
   useEffect(() => {
+    if (!tagMenuOpen) return;
     let cancelled = false;
-    listTags()
-      .then((tags) => {
-        if (!cancelled) setAllTags(tags);
-      })
-      .catch(() => {
-        /* the filter bar just stays empty */
-      });
+    const handle = setTimeout(() => {
+      listTags(tagInput.trim() || undefined)
+        .then((t) => {
+          if (!cancelled) setTagSuggestions(t);
+        })
+        .catch(() => {
+          /* suggestions just stay empty */
+        });
+    }, 200);
     return () => {
       cancelled = true;
+      clearTimeout(handle);
     };
-  }, []);
+  }, [tagInput, tagMenuOpen]);
 
   // Server-side query: the filter tree is built from the controls and sent as
   // POST /api/songs/query. Small debounce so typing doesn't spam the API.
@@ -55,6 +77,7 @@ export function SongsPage() {
     const handle = setTimeout(() => {
       const leaves: SongFilter[] = [];
       if (query.trim()) leaves.push({ search: query.trim() });
+      if (tagLike) leaves.push({ tagsLike: tagLike });
       if (selectedTags.length > 0)
         leaves.push(
           matchAll ? { tagsAll: selectedTags } : { tagsAny: selectedTags },
@@ -83,12 +106,20 @@ export function SongsPage() {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [query, selectedTags, matchAll, reload]);
+  }, [query, selectedTags, matchAll, tagLike, reload]);
 
-  function toggleTag(name: string) {
-    setSelectedTags((prev) =>
-      prev.includes(name) ? prev.filter((t) => t !== name) : [...prev, name],
-    );
+  function addTag(raw: string) {
+    const name = raw.trim().toLowerCase();
+    if (!name) return;
+    setSelectedTags((prev) => (prev.includes(name) ? prev : [...prev, name]));
+    setTagInput('');
+  }
+
+  function onTagKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      addTag(tagInput);
+    }
   }
 
   // Two-click confirm, no window.confirm. Manager-only (the API enforces it).
@@ -101,7 +132,7 @@ export function SongsPage() {
     setError(null);
     try {
       await deleteTag(tag.id);
-      setAllTags((prev) => prev.filter((t) => t.id !== tag.id));
+      setTagSuggestions((prev) => prev.filter((t) => t.id !== tag.id));
       setSelectedTags((prev) => prev.filter((n) => n !== tag.name));
       setReload((r) => r + 1);
     } catch (err) {
@@ -139,7 +170,14 @@ export function SongsPage() {
     }
   }
 
-  const filtering = query.trim() !== '' || selectedTags.length > 0;
+  const filtering =
+    query.trim() !== '' || selectedTags.length > 0 || tagLike !== null;
+  const exactSuggestions = tagSuggestions.filter(
+    (t) => !selectedTags.includes(t.name),
+  );
+  const inputIsNewTag =
+    tagInput.trim() !== '' &&
+    !tagSuggestions.some((t) => t.name === tagInput.trim().toLowerCase());
 
   return (
     <div>
@@ -188,7 +226,78 @@ export function SongsPage() {
         />
       </div>
 
-      {allTags.length > 0 && (
+      <div className="relative mb-3">
+        <input
+          className="input"
+          type="text"
+          aria-label="Filter by tag"
+          placeholder="Filter by tag… (type to search)"
+          value={tagInput}
+          onChange={(e) => {
+            setTagInput(e.target.value);
+            setTagMenuOpen(true);
+          }}
+          onKeyDown={onTagKeyDown}
+          onFocus={() => setTagMenuOpen(true)}
+          onBlur={() => setTimeout(() => setTagMenuOpen(false), 150)}
+        />
+        {tagMenuOpen && (exactSuggestions.length > 0 || inputIsNewTag) && (
+          <ul className="absolute z-10 mt-1 w-full rounded-lg border border-border bg-raised p-1 shadow-lg">
+            {exactSuggestions.map((s) => (
+              <li key={s.id} className="flex items-center">
+                <button
+                  type="button"
+                  className="flex-1 rounded-md px-2 py-1 text-left font-mono text-[13px] hover:bg-surface"
+                  onMouseDown={(e) => {
+                    e.preventDefault(); // keep focus; blur closes the menu
+                    addTag(s.name);
+                  }}
+                >
+                  {s.name}
+                </button>
+                {canManageTags && (
+                  <button
+                    type="button"
+                    aria-label={
+                      confirmingTag === s.id
+                        ? `Confirm delete tag ${s.name}`
+                        : `Delete tag ${s.name}`
+                    }
+                    className="px-2 text-subtle hover:text-error"
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      void onDeleteTag(s);
+                    }}
+                  >
+                    {confirmingTag === s.id ? (
+                      <Check size={12} />
+                    ) : (
+                      <Trash2 size={12} />
+                    )}
+                  </button>
+                )}
+              </li>
+            ))}
+            {inputIsNewTag && (
+              <li>
+                <button
+                  type="button"
+                  className="w-full rounded-md px-2 py-1 text-left text-[13px] italic text-muted hover:bg-surface"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setTagLike(tagInput.trim().toLowerCase());
+                    setTagInput('');
+                  }}
+                >
+                  any tag containing “{tagInput.trim().toLowerCase()}”
+                </button>
+              </li>
+            )}
+          </ul>
+        )}
+      </div>
+
+      {(selectedTags.length > 0 || tagLike !== null) && (
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
           <div
             className="flex overflow-hidden rounded-lg border border-border"
@@ -216,44 +325,37 @@ export function SongsPage() {
               </button>
             ))}
           </div>
-          {allTags.map((tag) => {
-            const active = selectedTags.includes(tag.name);
-            const confirming = confirmingTag === tag.id;
-            return (
-              <span
-                key={tag.id}
-                className={`inline-flex items-center gap-1 rounded-lg border px-2 py-0.5 font-mono text-[12px] ${
-                  active
-                    ? 'border-accent-border bg-accent-soft text-accent'
-                    : 'border-border bg-raised text-muted'
-                }`}
+          {selectedTags.map((name) => (
+            <span
+              key={name}
+              className="inline-flex items-center gap-1 rounded-lg border border-accent-border bg-accent-soft px-2 py-0.5 font-mono text-[12px] text-accent"
+            >
+              {name}
+              <button
+                type="button"
+                aria-label={`Remove tag filter ${name}`}
+                className="text-subtle hover:text-text"
+                onClick={() =>
+                  setSelectedTags((prev) => prev.filter((t) => t !== name))
+                }
               >
-                <button
-                  type="button"
-                  aria-pressed={active}
-                  aria-label={`Filter by tag ${tag.name}`}
-                  className="font-mono"
-                  onClick={() => toggleTag(tag.name)}
-                >
-                  {tag.name}
-                </button>
-                {canManageTags && (
-                  <button
-                    type="button"
-                    aria-label={
-                      confirming
-                        ? `Confirm delete tag ${tag.name}`
-                        : `Delete tag ${tag.name}`
-                    }
-                    className="text-subtle hover:text-error"
-                    onClick={() => void onDeleteTag(tag)}
-                  >
-                    {confirming ? <Check size={11} /> : <X size={11} />}
-                  </button>
-                )}
-              </span>
-            );
-          })}
+                <X size={11} />
+              </button>
+            </span>
+          ))}
+          {tagLike !== null && (
+            <span className="inline-flex items-center gap-1 rounded-lg border border-accent-border bg-accent-soft px-2 py-0.5 font-mono text-[12px] text-accent">
+              ~{tagLike}
+              <button
+                type="button"
+                aria-label={`Remove tag filter ~${tagLike}`}
+                className="text-subtle hover:text-text"
+                onClick={() => setTagLike(null)}
+              >
+                <X size={11} />
+              </button>
+            </span>
+          )}
         </div>
       )}
 
