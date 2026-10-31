@@ -119,3 +119,12 @@ export function canWrite(
 ): boolean {
   return isSuperadmin || role === 'member' || role === 'group_manager';
 }
+
+// Manager-only actions (e.g. deleting a tag from the vocabulary) = the
+// group's admin, or platform superadmin.
+export function canManage(
+  role: GroupRole | null,
+  isSuperadmin: boolean,
+): boolean {
+  return isSuperadmin || role === 'group_manager';
+}
