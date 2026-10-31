@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { keySchema } from '../songs/schemas.js';
+import { keySchema } from '../songs/keys.js';
 
 // Validation at the edges: everything crossing the HTTP boundary is parsed
 // here, never trusted inside the service layer.

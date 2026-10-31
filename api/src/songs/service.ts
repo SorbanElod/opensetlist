@@ -1,7 +1,7 @@
 import { and, desc, eq, sql } from 'drizzle-orm';
 
 import type { Db } from '../db/index.js';
-import { groups, songs } from '../db/schema.js';
+import { arrangements, groups, songs } from '../db/schema.js';
 import {
   KEYS,
   type CreateSongInput,
@@ -30,7 +30,8 @@ export type DeleteResult =
 
 export type ImportResult = {
   songs: SongView[];
-  skippedArrangements: number;
+  arrangementsImported: number;
+  skippedTags: number;
 };
 
 // The service takes groupId explicitly (not "the" group): multi-group later
@@ -128,27 +129,29 @@ export async function updateSong(
 }
 
 // JSON seed import. One transaction: a mid-loop failure rolls back the whole
-// import. Song-level fields only — arrangements/tags in the file are counted
-// and skipped until #9/#20 land.
+// import. Arrangements in the file are created too — importSongsSchema pipes
+// them through createArrangementSchema, so they arrive pre-validated. Tags
+// are counted and skipped until #20 lands.
 export async function importSongs(
   db: Db,
   input: { groupId: string; ownerId: string; data: ImportSongsInput },
 ): Promise<ImportResult> {
   return db.transaction(async (tx) => {
     const created: SongView[] = [];
-    let skippedArrangements = 0;
+    let arrangementsImported = 0;
+    let skippedTags = 0;
 
     for (const s of input.data.songs) {
       // The seed format carries the key on arrangements; the song's
       // default_key falls back to the first arrangement's key, else 'C'.
-      const firstKey = s.arrangements?.[0]?.original_key;
+      const firstKey = s.arrangements?.[0]?.originalKey;
       const defaultKey = KEYS.includes(firstKey as (typeof KEYS)[number])
         ? (firstKey as string)
         : 'C';
       const author =
         [s.authors?.lyrics, s.authors?.music].filter(Boolean).join(' · ') ||
         null;
-      skippedArrangements += s.arrangements?.length ?? 0;
+      skippedTags += s.tags?.length ?? 0;
 
       const [song] = await tx
         .insert(songs)
@@ -164,9 +167,21 @@ export async function importSongs(
         .returning();
 
       created.push(song!);
+
+      for (const a of s.arrangements ?? []) {
+        await tx.insert(arrangements).values({
+          songId: song!.id,
+          title: a.title,
+          originalKey: a.originalKey,
+          bpm: a.bpm ?? null,
+          defaultSequence: a.defaultSequence,
+          sections: a.sections,
+        });
+        arrangementsImported++;
+      }
     }
 
-    return { songs: created, skippedArrangements };
+    return { songs: created, arrangementsImported, skippedTags };
   });
 }
 

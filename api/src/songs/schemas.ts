@@ -1,25 +1,22 @@
 import { z } from 'zod';
 
+import {
+  createArrangementSchema,
+  MAX_SECTIONS,
+  MAX_SECTION_LABEL_LENGTH,
+  MAX_SEQUENCE_ENTRIES,
+  sectionSchema,
+  type CreateArrangementInput,
+} from '../arrangements/schemas.js';
+import { KEYS, keySchema } from './keys.js';
+
 // Validation at the edges: everything crossing the HTTP boundary is parsed
 // here, never trusted inside the service layer.
 
-// The 12 pitch-class keys with flats — same vocabulary as the song form.
-export const KEYS = [
-  'C',
-  'C#',
-  'D',
-  'Eb',
-  'E',
-  'F',
-  'F#',
-  'G',
-  'Ab',
-  'A',
-  'Bb',
-  'B',
-] as const;
-
-export const keySchema = z.enum(KEYS);
+// Re-exported for existing importers (songs/service.ts); the definition
+// lives in keys.ts to keep the arrangements/schemas <-> songs/schemas
+// import graph acyclic.
+export { KEYS, keySchema };
 
 // 'public' exists in the enum already; exposing it in the API/UI is a
 // later decision (cross-group sharing), no migration needed for it.
@@ -53,7 +50,9 @@ export type UpdateSongInput = z.infer<typeof updateSongSchema>;
 
 // JSON import (dev seeding via api/fixtures/dev-seed.json; a polished import
 // UI is post-alpha). Tolerant of the draft seed format: zod strips unknown
-// keys; arrangements and tags are accepted but skipped until #9/#20 land.
+// keys. Arrangements are imported — transformed to the API shape and piped
+// through createArrangementSchema, so the cross-field rules (unique labels,
+// sequence ⊆ labels) apply here too. Tags are accepted but skipped (#20).
 export const importSongsSchema = z.object({
   songs: z
     .array(
@@ -73,10 +72,30 @@ export const importSongsSchema = z.object({
           )
           .optional(),
         language: languageSchema.optional(),
-        // Only original_key is read (to derive the song's default key);
-        // the arrangements themselves are not stored yet (#9).
+        // Snake_case seed keys -> API shape -> the same validation the
+        // arrangements API applies (key enum, unique labels, sequence ⊆
+        // labels). Extra seed keys (kind, time_signature, ...) are stripped.
         arrangements: z
-          .array(z.object({ original_key: z.string().optional() }))
+          .array(
+            z
+              .object({
+                title: z.string().trim().min(1).max(200),
+                original_key: keySchema,
+                bpm: z.number().int().min(30).max(300).nullish(),
+                default_sequence: z
+                  .array(z.string().trim().min(1).max(MAX_SECTION_LABEL_LENGTH))
+                  .max(MAX_SEQUENCE_ENTRIES),
+                sections: z.array(sectionSchema).max(MAX_SECTIONS),
+              })
+              .transform((a): CreateArrangementInput => ({
+                title: a.title,
+                originalKey: a.original_key,
+                bpm: a.bpm ?? null,
+                defaultSequence: a.default_sequence,
+                sections: a.sections,
+              }))
+              .pipe(createArrangementSchema),
+          )
           .optional(),
         tags: z.array(z.string()).optional(), // not stored yet (#20)
       }),

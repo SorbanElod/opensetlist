@@ -250,7 +250,7 @@ describe.skipIf(!dbUrl)('songs routes', () => {
     expect(res.statusCode).toBe(400);
   });
 
-  it('imports songs from a JSON seed (maps authors/visibility, derives key, skips arrangements)', async () => {
+  it('imports songs with their arrangements from a JSON seed (maps authors/visibility, derives key)', async () => {
     const { token } = await registerUser();
     const cookie = { [auth.SESSION_COOKIE]: token };
 
@@ -264,12 +264,45 @@ describe.skipIf(!dbUrl)('songs routes', () => {
             title: 'Lorem Ipsum Dolor',
             authors: { lyrics: 'Lorem Szerző', music: 'Ipsum Zeneszerző' },
             visibility: 'GROUP',
-            arrangements: [{ original_key: 'G' }, { original_key: 'E' }],
+            tags: ['easter', 'Campfire'],
+            arrangements: [
+              {
+                title: 'Standard (G)',
+                original_key: 'G',
+                bpm: 92,
+                default_sequence: ['V1', 'C', 'V1'],
+                sections: [
+                  {
+                    label: 'V1',
+                    kind: 'VERSE', // extra seed keys are stripped
+                    content: 'X:1\nT:V1\nM:4/4\nK:G\nG2 G2 |',
+                  },
+                  {
+                    label: 'C',
+                    kind: 'CHORUS',
+                    content: 'X:2\nT:C\nM:4/4\nK:G\nC2 C2 |',
+                  },
+                ],
+              },
+              {
+                title: 'Transposed (E)',
+                original_key: 'E',
+                default_sequence: ['V1'],
+                sections: [{ label: 'V1', content: 'X:1\nK:E\nE2 E2 |' }],
+              },
+            ],
           },
           {
             title: 'Lőrém Ípszűm Dőlőr',
             authors: { lyrics: 'Lőrém Szerző' },
-            arrangements: [{ original_key: 'E' }],
+            arrangements: [
+              {
+                title: 'Standard (E)',
+                original_key: 'E',
+                default_sequence: [],
+                sections: [],
+              },
+            ],
           },
         ],
       },
@@ -278,7 +311,8 @@ describe.skipIf(!dbUrl)('songs routes', () => {
     expect(res.statusCode).toBe(201);
     const body = res.json();
     expect(body.imported).toBe(2);
-    expect(body.skippedArrangements).toBe(3);
+    expect(body.arrangementsImported).toBe(3);
+    expect(body.skippedTags).toBe(2);
     const first = body.songs.find(
       (s: { title: string }) => s.title === 'Lorem Ipsum Dolor',
     );
@@ -290,6 +324,26 @@ describe.skipIf(!dbUrl)('songs routes', () => {
     );
     expect(second.author).toBe('Lőrém Szerző');
     expect(second.defaultKey).toBe('E');
+
+    // The arrangements really landed, with sections and sequence intact.
+    const arrList = await app.inject({
+      method: 'GET',
+      url: `/api/songs/${first.id}/arrangements`,
+      cookies: cookie,
+    });
+    expect(arrList.statusCode).toBe(200);
+    const arrangements = arrList.json().arrangements as {
+      title: string;
+      bpm: number | null;
+      defaultSequence: string[];
+      sections: { label: string; content: string }[];
+    }[];
+    expect(arrangements).toHaveLength(2);
+    const standard = arrangements.find((a) => a.title === 'Standard (G)')!;
+    expect(standard.bpm).toBe(92);
+    expect(standard.defaultSequence).toEqual(['V1', 'C', 'V1']);
+    expect(standard.sections).toHaveLength(2);
+    expect(standard.sections[0]?.content).toContain('K:G');
 
     // The created songs show up in the list (matched by id — the shared test
     // DB may already contain same-titled rows from earlier runs).
@@ -312,6 +366,33 @@ describe.skipIf(!dbUrl)('songs routes', () => {
     });
     expect(res.statusCode).toBe(400);
     expect(res.json().message).toBe('Invalid input');
+  });
+
+  it('rejects an import whose arrangement sequence references an unknown label with 400', async () => {
+    const { token } = await registerUser();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/songs/import',
+      cookies: { [auth.SESSION_COOKIE]: token },
+      payload: {
+        songs: [
+          {
+            title: 'Broken seed song',
+            arrangements: [
+              {
+                title: 'Bad sequence',
+                original_key: 'G',
+                default_sequence: ['V1', 'Bridge'],
+                sections: [{ label: 'V1', content: 'X:1\nK:G\nG2 G2 |' }],
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(res.statusCode).toBe(400);
+    const issues = res.json().issues as { path: string }[];
+    expect(issues.some((i) => i.path.includes('defaultSequence'))).toBe(true);
   });
 
   it('deletes with the current version; stale version gets 409, then GET is 404', async () => {

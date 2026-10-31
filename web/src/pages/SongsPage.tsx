@@ -62,9 +62,9 @@ export function SongsPage() {
       const result = await importSongsJson(text);
       await refresh();
       setInfo(
-        `Imported ${result.imported} song(s)` +
-          (result.skippedArrangements > 0
-            ? ` — ${result.skippedArrangements} arrangement(s) skipped until P2.3`
+        `Imported ${result.imported} song(s), ${result.arrangementsImported} arrangement(s)` +
+          (result.skippedTags > 0
+            ? ` — ${result.skippedTags} tag(s) skipped until P2.2`
             : ''),
       );
     } catch (err) {
