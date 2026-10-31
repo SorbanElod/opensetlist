@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "OpenSetlist API",
-    "description": "Manual walkthrough for session auth (#7) and role enforcement (#14).\n\nBefore starting: `docker compose down -v && docker compose up -d db && pnpm -C api db:migrate` gives you a fresh database (the existing dev data is all test junk).\n\nPostman automatically stores and sends cookies per domain, so Register/Login keep you logged in across requests. To test the guest-vs-manager flow, log out (or switch user via Login) between the two roles.\n\nExpected flow on a fresh database:\n1. Register -> first user becomes group_manager of the lazily created single group\n2. Register again (second user) -> joins as member\n3. List members -> see both roles\n4. As the second user: PATCH/DELETE -> 403\n5. As the first user: PATCH role, DELETE member -> 200\n6. Demote the only manager -> 409 (last-manager lockout guard)\n\nMaintenance rule (AGENTS.md): every new endpoint lands together with its entry here, including example responses.",
+    "description": "Manual walkthrough for session auth (#7) and role enforcement (#14).\n\nBefore starting: `docker compose down -v && docker compose up -d db && pnpm -C api db:migrate` gives you a fresh database (the existing dev data is all test junk).\n\nPostman automatically stores and sends cookies per domain, so Register/Login keep you logged in across requests. To test the guest-vs-manager flow, log out (or switch user via Login) between the two roles.\n\nExpected flow on a fresh database:\n1. Register -> first user becomes group_manager of the lazily created single group\n2. Register again (second user) -> joins as member\n3. List members -> see both roles\n4. As the second user: PATCH/DELETE -> 403\n5. As the first user: PATCH role, DELETE member -> 200\n6. Demote the only manager -> 409 (last-manager lockout guard)\n7. Songs folder: Create song -> songId saved as a collection variable\n8. Arrangements folder: List/Create under {{songId}} (Create saves arrangementId), then Get/Update/Delete by id — Update with a stale version demonstrates the 409\n\nMaintenance rule (AGENTS.md): every new endpoint lands together with its entry here, including example responses.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -31,6 +31,10 @@
     },
     {
       "key": "songId",
+      "value": ""
+    },
+    {
+      "key": "arrangementId",
       "value": ""
     }
   ],
@@ -502,7 +506,12 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/songs",
               "host": ["{{baseUrl}}"],
@@ -557,7 +566,12 @@
           "name": "Import songs (JSON seed)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/songs/import",
               "host": ["{{baseUrl}}"],
@@ -639,7 +653,12 @@
           "name": "Update song",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/songs/{{songId}}",
               "host": ["{{baseUrl}}"],
@@ -682,7 +701,12 @@
           "name": "Delete song",
           "request": {
             "method": "DELETE",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/songs/{{songId}}",
               "host": ["{{baseUrl}}"],
@@ -718,6 +742,305 @@
                 }
               ],
               "body": "{\n  \"message\": \"Song was modified by someone else — reload and try again\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "arrangements",
+      "item": [
+        {
+          "name": "List arrangements",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/songs/{{songId}}/arrangements",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "songs", "{{songId}}", "arrangements"]
+            },
+            "description": "reader+. 404 when the song doesn't exist in the group."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"arrangements\": [\n    {\n      \"id\": \"7a6b5c4d-2222-4eee-9fff-000000000002\",\n      \"songId\": \"5e4d3c2b-4444-4fff-8aaa-000000000001\",\n      \"title\": \"Acoustic unplugged\",\n      \"originalKey\": \"G\",\n      \"bpm\": 96,\n      \"defaultSequence\": [\n        \"V1\",\n        \"C1\",\n        \"V1\"\n      ],\n      \"sections\": [\n        {\n          \"label\": \"V1\",\n          \"content\": \"X:1\\nT:Verse 1\\nM:4/4\\nL:1/4\\nK:G\\nGAB c2B | A2 G2 |\"\n        },\n        {\n          \"label\": \"C1\",\n          \"content\": \"X:1\\nT:Chorus\\nM:4/4\\nL:1/4\\nK:G\\nG2 G2 G2 G2 |\"\n        }\n      ],\n      \"version\": 1,\n      \"createdAt\": \"2026-10-31T10:00:00.000Z\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "401 Not authenticated",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Not authenticated\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create arrangement",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/songs/{{songId}}/arrangements",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "songs", "{{songId}}", "arrangements"]
+            },
+            "description": "member+ only (403 for readers). Sections hold the ABC notation; defaultSequence entries must be existing section labels (repeats allowed), labels must be unique — otherwise 400. 404 when the song doesn't exist.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Acoustic unplugged\",\n  \"originalKey\": \"G\",\n  \"bpm\": 96,\n  \"sections\": [\n    {\n      \"label\": \"V1\",\n      \"content\": \"X:1\\nT:Verse 1\\nM:4/4\\nL:1/4\\nK:G\\nGAB c2B | A2 G2 |\"\n    },\n    {\n      \"label\": \"C1\",\n      \"content\": \"X:1\\nT:Chorus\\nM:4/4\\nL:1/4\\nK:G\\nG2 G2 G2 G2 |\"\n    }\n  ],\n  \"defaultSequence\": [\n    \"V1\",\n    \"C1\",\n    \"V1\"\n  ]\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"arrangement\": {\n    \"id\": \"7a6b5c4d-2222-4eee-9fff-000000000002\",\n    \"songId\": \"5e4d3c2b-4444-4fff-8aaa-000000000001\",\n    \"title\": \"Acoustic unplugged\",\n    \"originalKey\": \"G\",\n    \"bpm\": 96,\n    \"defaultSequence\": [\n      \"V1\",\n      \"C1\",\n      \"V1\"\n    ],\n    \"sections\": [\n      {\n        \"label\": \"V1\",\n        \"content\": \"X:1\\nT:Verse 1\\nM:4/4\\nL:1/4\\nK:G\\nGAB c2B | A2 G2 |\"\n      },\n      {\n        \"label\": \"C1\",\n        \"content\": \"X:1\\nT:Chorus\\nM:4/4\\nL:1/4\\nK:G\\nG2 G2 G2 G2 |\"\n      }\n    ],\n    \"version\": 1,\n    \"createdAt\": \"2026-10-31T10:00:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "400 Invalid input (unknown sequence label)",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Invalid input\",\n  \"issues\": [\n    {\n      \"path\": \"defaultSequence.1\",\n      \"message\": \"Unknown section label \\\"Bridge\\\" — sequence entries must be existing section labels\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "403 Forbidden (reader)",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Forbidden\"\n}"
+            },
+            {
+              "name": "404 Song not found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Song not found\"\n}"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 + arrangementId saved', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.collectionVariables.set('arrangementId', pm.response.json().arrangement.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get arrangement",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/arrangements/{{arrangementId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "arrangements", "{{arrangementId}}"]
+            },
+            "description": "reader+."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"arrangement\": {\n    \"id\": \"7a6b5c4d-2222-4eee-9fff-000000000002\",\n    \"songId\": \"5e4d3c2b-4444-4fff-8aaa-000000000001\",\n    \"title\": \"Acoustic unplugged\",\n    \"originalKey\": \"G\",\n    \"bpm\": 96,\n    \"defaultSequence\": [\n      \"V1\",\n      \"C1\",\n      \"V1\"\n    ],\n    \"sections\": [\n      {\n        \"label\": \"V1\",\n        \"content\": \"X:1\\nT:Verse 1\\nM:4/4\\nL:1/4\\nK:G\\nGAB c2B | A2 G2 |\"\n      },\n      {\n        \"label\": \"C1\",\n        \"content\": \"X:1\\nT:Chorus\\nM:4/4\\nL:1/4\\nK:G\\nG2 G2 G2 G2 |\"\n      }\n    ],\n    \"version\": 1,\n    \"createdAt\": \"2026-10-31T10:00:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "404 Not found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Arrangement not found\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update arrangement",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/api/arrangements/{{arrangementId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "arrangements", "{{arrangementId}}"]
+            },
+            "description": "member+ only. Full-body PATCH — the section editor always sends the whole arrangement. version must be the one you last saw; a stale version gets 409 (optimistic locking), unknown id 404.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Acoustic (slow)\",\n  \"originalKey\": \"G\",\n  \"bpm\": 96,\n  \"sections\": [\n    {\n      \"label\": \"V1\",\n      \"content\": \"X:1\\nT:Verse 1\\nM:4/4\\nL:1/4\\nK:G\\nGAB c2B | A2 G2 |\"\n    },\n    {\n      \"label\": \"C1\",\n      \"content\": \"X:1\\nT:Chorus\\nM:4/4\\nL:1/4\\nK:G\\nG2 G2 G2 G2 |\"\n    }\n  ],\n  \"defaultSequence\": [\n    \"V1\",\n    \"C1\",\n    \"V1\"\n  ],\n  \"version\": 1\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"arrangement\": {\n    \"id\": \"7a6b5c4d-2222-4eee-9fff-000000000002\",\n    \"songId\": \"5e4d3c2b-4444-4fff-8aaa-000000000001\",\n    \"title\": \"Acoustic (slow)\",\n    \"originalKey\": \"G\",\n    \"bpm\": 96,\n    \"defaultSequence\": [\n      \"V1\",\n      \"C1\",\n      \"V1\"\n    ],\n    \"sections\": [\n      {\n        \"label\": \"V1\",\n        \"content\": \"X:1\\nT:Verse 1\\nM:4/4\\nL:1/4\\nK:G\\nGAB c2B | A2 G2 |\"\n      },\n      {\n        \"label\": \"C1\",\n        \"content\": \"X:1\\nT:Chorus\\nM:4/4\\nL:1/4\\nK:G\\nG2 G2 G2 G2 |\"\n      }\n    ],\n    \"version\": 2,\n    \"createdAt\": \"2026-10-31T10:00:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "400 Invalid input (duplicate labels)",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Invalid input\",\n  \"issues\": [\n    {\n      \"path\": \"sections\",\n      \"message\": \"Section labels must be unique within an arrangement\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "404 Not found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Arrangement not found\"\n}"
+            },
+            {
+              "name": "409 Conflict (stale version)",
+              "status": "Conflict",
+              "code": 409,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Arrangement was modified by someone else — reload and try again\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete arrangement",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/arrangements/{{arrangementId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "arrangements", "{{arrangementId}}"]
+            },
+            "description": "member+ only, version-checked like PATCH (send the version you last saw; here 1 right after Create). Setlist items referencing it cascade-delete.",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": 1\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"status\": \"ok\"\n}"
+            },
+            {
+              "name": "409 Conflict (stale version)",
+              "status": "Conflict",
+              "code": 409,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Arrangement was modified by someone else — reload and try again\"\n}"
+            },
+            {
+              "name": "404 Not found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Arrangement not found\"\n}"
             }
           ]
         }
