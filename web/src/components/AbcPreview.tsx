@@ -22,8 +22,6 @@ export function AbcPreview({ abc }: { abc: string }) {
       try {
         // responsive: 'resize' fits the staff to the container width — the
         // primary device is a phone on stage, so notation must not overflow.
-        // The white card is deliberate: sheet music is read black-on-white,
-        // in dark mode too.
         renderAbc(target, abc, { responsive: 'resize' });
         setWarning(null);
       } catch {
@@ -37,10 +35,13 @@ export function AbcPreview({ abc }: { abc: string }) {
 
   return (
     <div>
+      {/* abcjs draws its SVG with currentColor, so the notation follows the
+          theme text color: white-on-dark in dark mode, black-on-light in
+          light mode. No fixed white card — that washed the notation out. */}
       <div
         ref={targetRef}
         data-testid="abc-preview"
-        className="overflow-x-auto rounded-lg bg-white p-2 [&_svg]:max-w-full"
+        className="overflow-x-auto rounded-lg p-2 text-text [&_svg]:max-w-full"
       />
       {warning && <p className="field-error">{warning}</p>}
     </div>
