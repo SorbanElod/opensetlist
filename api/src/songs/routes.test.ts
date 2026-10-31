@@ -312,7 +312,7 @@ describe.skipIf(!dbUrl)('songs routes', () => {
     const body = res.json();
     expect(body.imported).toBe(2);
     expect(body.arrangementsImported).toBe(3);
-    expect(body.skippedTags).toBe(2);
+    expect(body.tagsImported).toBe(2);
     const first = body.songs.find(
       (s: { title: string }) => s.title === 'Lorem Ipsum Dolor',
     );
@@ -366,6 +366,88 @@ describe.skipIf(!dbUrl)('songs routes', () => {
     });
     expect(res.statusCode).toBe(400);
     expect(res.json().message).toBe('Invalid input');
+  });
+
+  it('filters songs via POST /api/songs/query (and/or/search, tags normalized)', async () => {
+    const { token } = await registerUser();
+    const cookies = { [auth.SESSION_COOKIE]: token };
+    const suffix = randomUUID().slice(0, 8);
+
+    const mk = async (title: string, tags: string[]) => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/songs',
+        payload: { title, defaultKey: 'C', visibility: 'group', tags },
+        cookies,
+      });
+      expect(res.statusCode).toBe(201);
+      return res.json().song as { title: string; tags: string[] };
+    };
+    const a = await mk(`QueryA ${suffix}`, ['easter', 'campfire']);
+    const b = await mk(`QueryB ${suffix}`, ['easter']);
+    const c = await mk(`QueryC ${suffix}`, ['christmas']);
+    expect(a.tags).toEqual(['campfire', 'easter']); // alphabetical
+
+    const query = async (filter: unknown) => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/songs/query',
+        cookies,
+        payload: { filter },
+      });
+      expect(res.statusCode).toBe(200);
+      return (res.json().songs as { title: string }[]).map((s) => s.title);
+    };
+
+    // tagsAll = AND: only the song carrying both tags
+    const andRes = await query({ tagsAll: ['easter', 'campfire'] });
+    expect(andRes).toContain(a.title);
+    expect(andRes).not.toContain(b.title);
+    expect(andRes).not.toContain(c.title);
+
+    // tagsAny inside or = OR: campfire OR christmas
+    const orRes = await query({ or: [{ tagsAny: ['campfire', 'christmas'] }] });
+    expect(orRes).toContain(a.title);
+    expect(orRes).toContain(c.title);
+    expect(orRes).not.toContain(b.title);
+
+    // nested: (search suffix) AND (tagsAll easter)
+    const combo = await query({
+      and: [{ search: suffix }, { tagsAll: ['easter'] }],
+    });
+    expect(combo).toContain(a.title);
+    expect(combo).toContain(b.title);
+    expect(combo).not.toContain(c.title);
+
+    // filter tag names are normalized: uppercase input matches stored lowercase
+    const norm = await query({ tagsAll: ['EASTER'] });
+    expect(norm).toContain(a.title);
+    expect(norm).toContain(b.title);
+
+    // tagsLike = substring match on tag names: "christ" matches "christmas"
+    const like = await query({ tagsLike: 'christ' });
+    expect(like).toContain(c.title);
+    expect(like).not.toContain(a.title);
+    expect(like).not.toContain(b.title);
+
+    // an empty leaf is rejected with 400
+    const bad = await app.inject({
+      method: 'POST',
+      url: '/api/songs/query',
+      cookies,
+      payload: { filter: {} },
+    });
+    expect(bad.statusCode).toBe(400);
+
+    // no filter at all returns the whole library
+    const all = await app.inject({
+      method: 'POST',
+      url: '/api/songs/query',
+      cookies,
+      payload: {},
+    });
+    expect(all.statusCode).toBe(200);
+    expect(all.json().songs.length).toBeGreaterThanOrEqual(3);
   });
 
   it('rejects an import whose arrangement sequence references an unknown label with 400', async () => {

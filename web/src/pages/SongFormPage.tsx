@@ -1,6 +1,6 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { ArrowLeft, Check } from 'lucide-react';
+import { ArrowLeft, Check, X } from 'lucide-react';
 
 import { ApiError } from '../api/client';
 import {
@@ -14,6 +14,7 @@ import {
   type SongInput,
   type SongVisibility,
 } from '../api/songs';
+import { listTags, type Tag } from '../api/tags';
 
 const VISIBILITIES: { value: SongVisibility; label: string }[] = [
   { value: 'group', label: 'Group library' },
@@ -34,9 +35,28 @@ export function SongFormPage() {
   const [defaultKey, setDefaultKey] = useState<(typeof KEYS)[number]>('G');
   const [visibility, setVisibility] = useState<SongVisibility>('group');
   const [language, setLanguage] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [tagMenuOpen, setTagMenuOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<SongFieldErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // The group's tag vocabulary — the autocomplete source for the token input.
+  useEffect(() => {
+    let cancelled = false;
+    listTags()
+      .then((t) => {
+        if (!cancelled) setAllTags(t);
+      })
+      .catch(() => {
+        /* autocomplete just stays empty */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Edit mode: load the song and prefill the form.
   useEffect(() => {
@@ -51,6 +71,7 @@ export function SongFormPage() {
         setDefaultKey(s.defaultKey as (typeof KEYS)[number]);
         setVisibility(s.visibility);
         setLanguage(s.language ?? '');
+        setTags(s.tags);
       })
       .catch((err) => {
         if (!cancelled)
@@ -63,6 +84,38 @@ export function SongFormPage() {
     };
   }, [id, isEdit]);
 
+  // Token input: Enter or comma commits the typed name (normalized like the
+  // API does: trimmed + lowercase); unknown names are created on save.
+  function addTag(raw: string) {
+    const name = raw.trim().toLowerCase();
+    if (!name) return;
+    setTags((prev) => (prev.includes(name) ? prev : [...prev, name]));
+    setTagInput('');
+  }
+
+  function onTagKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Enter' || event.key === ',') {
+      event.preventDefault(); // don't submit the form on Enter in the token input
+      addTag(tagInput);
+    } else if (
+      event.key === 'Backspace' &&
+      tagInput === '' &&
+      tags.length > 0
+    ) {
+      setTags((prev) => prev.slice(0, -1));
+    }
+  }
+
+  const tagSuggestions = tagInput.trim()
+    ? allTags
+        .filter(
+          (t) =>
+            t.name.includes(tagInput.trim().toLowerCase()) &&
+            !tags.includes(t.name),
+        )
+        .slice(0, 8)
+    : [];
+
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -72,6 +125,7 @@ export function SongFormPage() {
       defaultKey,
       visibility,
       language: language.trim() || undefined,
+      tags,
     };
 
     // Client-side mirror of the API schemas: fail fast, no request.
@@ -103,7 +157,9 @@ export function SongFormPage() {
           const mapped: SongFieldErrors = {};
           for (const issue of err.issues) {
             if (
-              ['title', 'author', 'defaultKey', 'language'].includes(issue.path)
+              ['title', 'author', 'defaultKey', 'language', 'tags'].includes(
+                issue.path,
+              )
             )
               mapped[issue.path as keyof SongFieldErrors] = issue.message;
           }
@@ -249,6 +305,72 @@ export function SongFormPage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="field">
+            <label className="flabel" htmlFor="tag-input">
+              Tags
+            </label>
+            {tags.length > 0 && (
+              <div className="mb-1.5 flex flex-wrap gap-1.5">
+                {tags.map((t) => (
+                  <span
+                    key={t}
+                    className="inline-flex items-center gap-1 rounded-lg border border-border bg-raised px-2 py-0.5 font-mono text-[12px]"
+                  >
+                    {t}
+                    <button
+                      type="button"
+                      aria-label={`Remove tag ${t}`}
+                      className="text-subtle hover:text-text"
+                      onClick={() =>
+                        setTags((prev) => prev.filter((x) => x !== t))
+                      }
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="relative">
+              <input
+                className="input"
+                id="tag-input"
+                type="text"
+                placeholder="Add a tag… (Enter to add)"
+                aria-invalid={fieldErrors.tags ? 'true' : undefined}
+                value={tagInput}
+                onChange={(e) => {
+                  setTagInput(e.target.value);
+                  setTagMenuOpen(true);
+                }}
+                onKeyDown={onTagKeyDown}
+                onFocus={() => setTagMenuOpen(true)}
+                onBlur={() => setTagMenuOpen(false)}
+              />
+              {tagMenuOpen && tagSuggestions.length > 0 && (
+                <ul className="absolute z-10 mt-1 w-full rounded-lg border border-border bg-raised p-1 shadow-lg">
+                  {tagSuggestions.map((s) => (
+                    <li key={s.id}>
+                      <button
+                        type="button"
+                        className="w-full rounded-md px-2 py-1 text-left font-mono text-[13px] hover:bg-surface"
+                        onMouseDown={(e) => {
+                          e.preventDefault(); // keep focus; blur closes the menu
+                          addTag(s.name);
+                        }}
+                      >
+                        {s.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            {fieldErrors.tags && (
+              <p className="field-error">{fieldErrors.tags}</p>
+            )}
           </div>
 
           <div className="mt-5 flex gap-2">
