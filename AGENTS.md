@@ -1,7 +1,7 @@
 # AGENTS.md — OpenSetlist
 
 Context file for the AI coding agent. **Read at the start of every session, before doing anything else.**
-Maintained by Előd Sorbán. Last updated: 2026-10-30.
+Maintained by Előd Sorbán. Last updated: 2026-10-31.
 
 ## Project context
 
@@ -55,6 +55,7 @@ Rules:
 7. **Plan before execute:** show the file tree / dependency list and wait for approval before writing code on anything non-trivial.
 8. **Agent writes tests; Előd runs them.** Tests are part of the work, not an afterthought.
 9. **Postman collection stays current.** `postman/OpenSetlist.postman_collection.json` is the browsable API contract: any PR that adds or changes an endpoint updates the collection in the same PR — request, expected status codes, and example responses.
+10. **Keep the "Current phase" section below current: update it in the same session, right after every PR is created.** The issue board and this file must not drift (P2.0/P2.1 went stale exactly this way once).
 
 ## Collaboration expectations
 
@@ -62,12 +63,12 @@ Elød is learning most of this stack (first serious PostgreSQL, first AI-assiste
 
 - Prefer **explicit and readable** over clever abstractions. SQL visible, magic minimal.
 - When introducing a concept Elød may not know (a Drizzle pattern, a Postgres feature), add a one-line "why" — he must be able to defend it later.
-- **Division of labor:** the agent drives boilerplate (CRUD, config, Docker, lint setup). Előd personally drives thesis-critical code: auth, the `authorize()` choke point, the ABC pipeline, annotations logic. On those, propose and explain; don't just barrel through.
+- **Division of labor:** the agent does the work end-to-end — implementation, tests, commits, PRs. Előd reviews each PR, does additional manual testing, and gives approval before merge.
 - When blocked between two reasonable options, present the tradeoff briefly instead of silently picking.
 
 ## Current phase
 
-P2 — Song library (next: `#28` auth UI shell, then `#8` songs CRUD, `#9` arrangements + ABC section editor, `#10` role-based rendering, `#20` tags). P0 and P1 are complete: walking skeleton + Compose + CI (`#1`–`#5`), Drizzle 10-table schema + migrations (`#6`), session auth — Argon2id, hashed tokens, first-user-manager bootstrap (`#7`), and the `authorize()` choke point with member management + lockout guard (`#14`). Backlog phases: P0 skeleton → P1 data & identity → P2 song library → P3 setlists & live → P4 auth hardening & print → P5 deploy & alpha. All issues live in this repo with `[P#.x]` prefixes — check the board, don't guess scope.
+P2 — Song library (done: `#28` auth UI shell, `#8` songs CRUD; next: `#9` arrangements + ABC section editor, then `#20` tags and `#10` role-based rendering). P0 and P1 are complete: walking skeleton + Compose + CI (`#1`–`#5`), Drizzle 10-table schema + migrations (`#6`), session auth — Argon2id, hashed tokens, first-user-manager bootstrap (`#7`), and the `authorize()` choke point with member management + lockout guard (`#14`). Backlog phases: P0 skeleton → P1 data & identity → P2 song library → P3 setlists & live → P4 auth hardening & print → P5 deploy & alpha. All issues live in this repo with `[P#.x]` prefixes — check the board, don't guess scope.
 
 ## Hard do-nots (past decisions — do not relitigate)
 
