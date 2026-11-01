@@ -8,7 +8,12 @@ import {
 } from 'react';
 
 import * as authApi from '../api/auth';
-import type { GroupRole, Membership, PublicUser } from '../api/auth';
+import type {
+  DefaultView,
+  GroupRole,
+  Membership,
+  PublicUser,
+} from '../api/auth';
 
 type AuthState =
   | { status: 'loading' }
@@ -27,6 +32,9 @@ type AuthContextValue = AuthState & {
     password: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
+  // Persists the preferred on-stage view (issue #10) via PATCH /api/auth/me
+  // and updates the local session state from the server's response.
+  setDefaultView: (view: DefaultView) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -82,8 +90,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ status: 'unauthenticated' });
   }, []);
 
+  const setDefaultView = useCallback(async (view: DefaultView) => {
+    const me = await authApi.updateMe({ defaultView: view });
+    setState({
+      status: 'authenticated',
+      user: me.user,
+      memberships: me.memberships ?? [],
+    });
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ ...state, login, register, logout }}>
+    <AuthContext.Provider
+      value={{ ...state, login, register, logout, setDefaultView }}
+    >
       {children}
     </AuthContext.Provider>
   );
