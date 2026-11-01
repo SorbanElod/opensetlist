@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 import { groupMembers } from '../db/schema.js';
 import type { Db } from '../db/index.js';
-import { loginSchema, registerSchema } from './schemas.js';
+import { loginSchema, registerSchema, updateMeSchema } from './schemas.js';
 import * as auth from './service.js';
 
 type AuthOptions = { db: Db };
@@ -125,6 +125,40 @@ export const authRoutes: FastifyPluginAsync<AuthOptions> = async (
   app.get('/api/auth/me', async (request, reply) => {
     const token = request.cookies[auth.SESSION_COOKIE];
     const user = token ? await auth.getUserBySessionToken(db, token) : null;
+
+    if (!user) {
+      return reply.code(401).send({ message: 'Not authenticated' });
+    }
+
+    return reply.send({ user, memberships: await membershipsFor(user.id) });
+  });
+
+  // Self-service profile update (issue #10): the session owner's own
+  // default_view. Not a group resource, so it sits next to GET /me with the
+  // same cookie check instead of behind authorize() — there is no group
+  // role that could own "my own preference".
+  app.patch('/api/auth/me', async (request, reply) => {
+    const token = request.cookies[auth.SESSION_COOKIE];
+    const sessionUser = token
+      ? await auth.getUserBySessionToken(db, token)
+      : null;
+
+    if (!sessionUser) {
+      return reply.code(401).send({ message: 'Not authenticated' });
+    }
+
+    let body: z.infer<typeof updateMeSchema>;
+    try {
+      body = updateMeSchema.parse(request.body);
+    } catch (error) {
+      return invalidInput(reply, error as ZodError);
+    }
+
+    const user = await auth.updateDefaultView(
+      db,
+      sessionUser.id,
+      body.defaultView,
+    );
 
     if (!user) {
       return reply.code(401).send({ message: 'Not authenticated' });

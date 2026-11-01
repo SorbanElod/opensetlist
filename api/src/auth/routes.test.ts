@@ -148,6 +148,50 @@ describe.skipIf(!dbUrl)('auth routes', () => {
     );
   });
 
+  it('defaults defaultView to chords and PATCH /api/auth/me changes it', async () => {
+    const res = await register();
+    const token = sessionCookie(res);
+
+    // New users start on chords — the guitarist default (issue #10).
+    expect(res.json().user.defaultView).toBe('chords');
+    expect((await meWith(token)).json().user.defaultView).toBe('chords');
+
+    const patched = await app.inject({
+      method: 'PATCH',
+      url: '/api/auth/me',
+      cookies: { [auth.SESSION_COOKIE]: token! },
+      payload: { defaultView: 'lyrics' },
+    });
+
+    expect(patched.statusCode).toBe(200);
+    expect(patched.json().user.defaultView).toBe('lyrics');
+    // Persisted: a fresh /me sees it too.
+    expect((await meWith(token)).json().user.defaultView).toBe('lyrics');
+  });
+
+  it('PATCH /api/auth/me rejects an unknown view with 400 and no session with 401', async () => {
+    const res = await register();
+    const token = sessionCookie(res);
+
+    const bad = await app.inject({
+      method: 'PATCH',
+      url: '/api/auth/me',
+      cookies: { [auth.SESSION_COOKIE]: token! },
+      payload: { defaultView: 'drums' },
+    });
+    expect(bad.statusCode).toBe(400);
+    expect(bad.json().issues.map((i: { path: string }) => i.path)).toContain(
+      'defaultView',
+    );
+
+    const anonymous = await app.inject({
+      method: 'PATCH',
+      url: '/api/auth/me',
+      payload: { defaultView: 'lyrics' },
+    });
+    expect(anonymous.statusCode).toBe(401);
+  });
+
   it('rejects wrong password and unknown email with the same message', async () => {
     const email = newEmail();
     await register(email);
