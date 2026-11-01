@@ -234,7 +234,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["api", "auth", "me"]
             },
-            "description": "Self-service profile update (#10): sets the caller's default on-stage view — chords (guitarist) or lyrics (singer). 200 returns the fresh user; 400 on an unknown value; 401 without a session."
+            "description": "Self-service profile update (#10): sets the caller's default on-stage view — sheet (full notation), chords (chord chart, no staff) or lyrics (words only). 200 returns the fresh user; 400 on an unknown value; 401 without a session."
           },
           "response": [
             {

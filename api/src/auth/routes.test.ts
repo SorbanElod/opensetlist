@@ -167,6 +167,16 @@ describe.skipIf(!dbUrl)('auth routes', () => {
     expect(patched.json().user.defaultView).toBe('lyrics');
     // Persisted: a fresh /me sees it too.
     expect((await meWith(token)).json().user.defaultView).toBe('lyrics');
+
+    // All three views are accepted (sheet / chords / lyrics — issue #10).
+    const sheet = await app.inject({
+      method: 'PATCH',
+      url: '/api/auth/me',
+      cookies: { [auth.SESSION_COOKIE]: token! },
+      payload: { defaultView: 'sheet' },
+    });
+    expect(sheet.statusCode).toBe(200);
+    expect(sheet.json().user.defaultView).toBe('sheet');
   });
 
   it('PATCH /api/auth/me rejects an unknown view with 400 and no session with 401', async () => {

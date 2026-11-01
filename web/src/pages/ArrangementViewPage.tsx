@@ -1,19 +1,25 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { ArrowLeft, Guitar, Mic, Pencil } from 'lucide-react';
+import { ArrowLeft, Guitar, Mic, Music, Pencil } from 'lucide-react';
 
 import { ApiError } from '../api/client';
 import { getArrangement, type Arrangement } from '../api/arrangements';
 import { getSong, type Song } from '../api/songs';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 import { AbcRenderer } from '../components/AbcRenderer';
-import { orderedSections, stripChords, type ViewMode } from '../lib/abcViews';
+import {
+  chordChartText,
+  lyricsText,
+  orderedSections,
+  type ViewMode,
+} from '../lib/abcViews';
 
 // On-stage view (issue #10): renders the arrangement's ABC sections in play
-// order. The default view comes from the user's stored preference
-// (guitarist -> chords, singer -> lyrics); switching Chords/Lyrics is local
-// state only — both views render from the same fetched ABC, so switching
-// costs no server round-trip. "Set as my default" persists the choice.
+// order in one of three views — sheet (full abcjs notation), chords (text
+// chord chart, no staff) or lyrics (words only). All three derive from the
+// same fetched ABC, so switching is local state only and costs no server
+// round-trip. The default view comes from the user's stored preference;
+// "Set as my default" persists the choice.
 export function ArrangementViewPage() {
   const { id } = useParams<{ id: string }>();
   const auth = useAuth();
@@ -23,7 +29,7 @@ export function ArrangementViewPage() {
   const [arrangement, setArrangement] = useState<Arrangement | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [view, setView] = useState<ViewMode>('chords');
+  const [view, setView] = useState<ViewMode>('sheet');
   const viewInitialized = useRef(false);
   const [savingDefault, setSavingDefault] = useState(false);
 
@@ -92,6 +98,28 @@ export function ArrangementViewPage() {
       active ? 'bg-raised text-text' : 'text-muted hover:text-text'
     }`;
 
+  // The three views of one ABC source: sheet renders via abcjs, chords and
+  // lyrics are plain-text derivations (no staff) — see lib/abcViews.
+  function renderSection(content: string) {
+    if (view === 'sheet') return <AbcRenderer abc={content} />;
+    const text =
+      view === 'chords' ? chordChartText(content) : lyricsText(content);
+    if (!text.trim()) {
+      return (
+        <p className="hint">
+          {view === 'chords'
+            ? 'No chord symbols in this section.'
+            : 'No lyrics (w: lines) in this section.'}
+        </p>
+      );
+    }
+    return (
+      <pre className="whitespace-pre-wrap break-words font-mono text-[14px] leading-relaxed text-text">
+        {text}
+      </pre>
+    );
+  }
+
   return (
     <div>
       <Link
@@ -151,6 +179,14 @@ export function ArrangementViewPage() {
             >
               <button
                 type="button"
+                className={segmentClass(view === 'sheet')}
+                aria-pressed={view === 'sheet'}
+                onClick={() => setView('sheet')}
+              >
+                <Music size={14} /> Sheet
+              </button>
+              <button
+                type="button"
                 className={segmentClass(view === 'chords')}
                 aria-pressed={view === 'chords'}
                 onClick={() => setView('chords')}
@@ -194,15 +230,9 @@ export function ArrangementViewPage() {
                 <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-muted">
                   {section.label}
                 </h2>
-                {/* Same stored ABC for both views; the lyrics view strips
-                    chord symbols at render time — nothing is persisted. */}
-                <AbcRenderer
-                  abc={
-                    view === 'lyrics'
-                      ? stripChords(section.content)
-                      : section.content
-                  }
-                />
+                {/* All views derive from the same stored ABC at render
+                    time — nothing derived is persisted. */}
+                {renderSection(section.content)}
               </section>
             ))}
           </div>

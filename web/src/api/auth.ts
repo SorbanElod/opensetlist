@@ -1,8 +1,9 @@
 import { apiFetch } from './client';
 
 // Mirrors DefaultView in api/src/auth/service.ts (issue #10): the on-stage
-// view the user's role maps to by default.
-export type DefaultView = 'chords' | 'lyrics';
+// view the user's role maps to by default — sheet (full notation), chords
+// (chord chart, no staff) or lyrics (words only).
+export type DefaultView = 'sheet' | 'chords' | 'lyrics';
 
 // Mirrors PublicUser in api/src/auth/service.ts.
 export type PublicUser = {

@@ -27,7 +27,7 @@ export const loginSchema = z.object({
 // Self-service profile update (issue #10): only the preferred rendering
 // view is user-settable — email/name/password changes are a later phase.
 export const updateMeSchema = z.object({
-  defaultView: z.enum(['chords', 'lyrics']),
+  defaultView: z.enum(['sheet', 'chords', 'lyrics']),
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;

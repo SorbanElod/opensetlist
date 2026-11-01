@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { orderedSections, stripChords } from './abcViews';
+import { chordChartText, lyricsText, orderedSections } from './abcViews';
 import type { ArrangementSection } from '../api/arrangements';
 
 const sections: ArrangementSection[] = [
@@ -57,29 +57,51 @@ describe('orderedSections', () => {
   });
 });
 
-describe('stripChords', () => {
-  it('removes inline chord symbols but keeps the notes', () => {
-    expect(stripChords('"G"G2 G2 | "C"c2 B2 |')).toBe('G2 G2 | c2 B2 |');
-  });
+// Seed-style ABC: quoted chord names inline on music lines, w: lyric lines
+// with hyphen-joined syllables ("a-ma-zing"). Each w: verse carries one
+// syllable per note across ALL music lines (8 notes here), per ABC rules.
+const ABC = [
+  'X:1',
+  'T:Amazing Grace — V1',
+  'M:4/4',
+  'K:G',
+  '"G"G2 A2 | "C"c2 B2 |',
+  '"D"d2 B2 "G"A2 G2 |',
+  'w: a-ma-zing grace how sweet the sound',
+  'w: i once was lost but now am found',
+].join('\n');
 
-  it('removes chord-only lines, leaving an empty line', () => {
-    expect(stripChords('"Cmaj7"\nGAB c2 |')).toBe('\nGAB c2 |');
-  });
-
-  it('handles slash chords and decorations', () => {
-    expect(stripChords('"C/G"G2 | "Dsus4"d2 |')).toBe('G2 | d2 |');
-  });
-
-  it('keeps header/directive lines untouched, including quoted titles', () => {
-    const abc = 'T:"My Song"\nM:4/4\nK:G\n%%score\n% a comment\n"G"G2 |';
-    expect(stripChords(abc)).toBe(
-      'T:"My Song"\nM:4/4\nK:G\n%%score\n% a comment\nG2 |',
+describe('lyricsText', () => {
+  it('joins hyphenated syllables back into words, one line per verse', () => {
+    expect(lyricsText(ABC)).toBe(
+      'amazing grace how sweet the sound\ni once was lost but now am found',
     );
   });
 
-  it('keeps lyrics lines (w:) untouched', () => {
-    expect(stripChords('w: a -- ma -- zing grace')).toBe(
-      'w: a -- ma -- zing grace',
+  it('handles skips (-) and extenders (_) without emitting them', () => {
+    expect(lyricsText('w: a - ma _ zing')).toBe('a ma zing');
+  });
+
+  it('returns an empty string when there are no w: lines', () => {
+    expect(lyricsText('X:1\nK:G\nG2 A2 |')).toBe('');
+  });
+});
+
+describe('chordChartText', () => {
+  it('prints chord symbols inline in front of the note they sit on, per verse', () => {
+    expect(chordChartText(ABC)).toBe(
+      'G a ma C zing grace\nD how sweet G the sound\n' +
+        'G i once C was lost\nD but now G am found',
     );
+  });
+
+  it('falls back to plain chord symbols per music line when there are no lyrics', () => {
+    const noLyrics = 'X:1\nK:G\n"G"G2 A2 | "C"c2 B2 |\n"D"d2 |';
+    expect(chordChartText(noLyrics)).toBe('G  C\nD');
+  });
+
+  it('holds the previous syllable over skip (-) notes', () => {
+    const abc = '"G"G2 A2 B2 |\nw: a - ma';
+    expect(chordChartText(abc)).toBe('G a a ma');
   });
 });
