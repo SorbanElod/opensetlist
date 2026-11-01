@@ -23,7 +23,7 @@ import {
 } from '../api/arrangements';
 import { getSong, KEYS, type Song } from '../api/songs';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
-import { AbcPreview } from '../components/AbcPreview';
+import { AbcRenderer } from '../components/AbcRenderer';
 
 // One page serves both modes: /songs/:songId/arrangements/new (create) and
 // /arrangements/:id/edit (edit). The section editor submits the whole
@@ -528,7 +528,8 @@ export function ArrangementEditorPage() {
                     </option>
                   ))}
                 </select>
-                <AbcPreview abc={preview.content} />
+                {/* debounceMs: live preview re-renders ~200ms after the last keystroke */}
+                <AbcRenderer abc={preview.content} debounceMs={200} />
               </div>
             ) : (
               <p className="hint mt-2">

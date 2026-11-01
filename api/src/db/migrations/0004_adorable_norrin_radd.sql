@@ -1,0 +1,1 @@
+ALTER TYPE "public"."default_view" ADD VALUE 'sheet' BEFORE 'chords';

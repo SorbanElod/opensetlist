@@ -1,11 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
 import { renderAbc } from 'abcjs';
 
-// Live abcjs preview. Re-renders ~200ms after the last keystroke — rendering
-// on every keystroke would jank on long sections. A parse problem never
-// crashes the editor: abcjs renders what it can, and anything thrown becomes
-// an inline warning while typing.
-export function AbcPreview({ abc }: { abc: string }) {
+// Shared abcjs renderer (issue #10): the editor's live preview and the
+// on-stage view page both render through this component. The caller decides
+// what ABC to pass — the lyrics view passes the chord-stripped text (see
+// stripChords in lib/abcViews), so no derived copy is ever stored.
+//
+// debounceMs exists for the editor (rendering on every keystroke would jank
+// on long sections); the view page renders immediately (0). A parse problem
+// never crashes the page: abcjs renders what it can, and anything thrown
+// becomes an inline warning.
+export function AbcRenderer({
+  abc,
+  debounceMs = 0,
+}: {
+  abc: string;
+  debounceMs?: number;
+}) {
   const targetRef = useRef<HTMLDivElement>(null);
   const [warning, setWarning] = useState<string | null>(null);
 
@@ -28,10 +39,10 @@ export function AbcPreview({ abc }: { abc: string }) {
         target.innerHTML = '';
         setWarning('This ABC cannot be rendered yet — it may be mid-edit.');
       }
-    }, 200);
+    }, debounceMs);
 
     return () => clearTimeout(handle);
-  }, [abc]);
+  }, [abc, debounceMs]);
 
   return (
     <div>
@@ -40,7 +51,7 @@ export function AbcPreview({ abc }: { abc: string }) {
           light mode. No fixed white card — that washed the notation out. */}
       <div
         ref={targetRef}
-        data-testid="abc-preview"
+        data-testid="abc-renderer"
         className="overflow-x-auto rounded-lg p-2 text-text [&_svg]:max-w-full"
       />
       {warning && <p className="field-error">{warning}</p>}

@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { AppShell } from './components/AppShell';
 import { ArrangementEditorPage } from './pages/ArrangementEditorPage';
+import { ArrangementViewPage } from './pages/ArrangementViewPage';
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -75,6 +76,8 @@ export function AppRoutes() {
           path="songs/:songId/arrangements/new"
           element={<ArrangementEditorPage />}
         />
+        {/* On-stage view (issue #10): readers included, like the read API. */}
+        <Route path="arrangements/:id" element={<ArrangementViewPage />} />
         <Route
           path="arrangements/:id/edit"
           element={<ArrangementEditorPage />}

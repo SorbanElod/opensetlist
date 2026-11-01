@@ -1,11 +1,17 @@
 import { apiFetch } from './client';
 
+// Mirrors DefaultView in api/src/auth/service.ts (issue #10): the on-stage
+// view the user's role maps to by default — sheet (full notation), chords
+// (chord chart, no staff) or lyrics (words only).
+export type DefaultView = 'sheet' | 'chords' | 'lyrics';
+
 // Mirrors PublicUser in api/src/auth/service.ts.
 export type PublicUser = {
   id: string;
   email: string;
   name: string;
   isSuperadmin: boolean;
+  defaultView: DefaultView;
 };
 
 // Mirrors GroupRole in api/src/auth/authorize.ts.
@@ -45,6 +51,17 @@ export async function logout(): Promise<void> {
 
 export async function getMe(): Promise<MeResponse> {
   return apiFetch<MeResponse>('/api/auth/me');
+}
+
+// PATCH /api/auth/me — self-service profile update (currently only
+// defaultView, the preferred rendering view).
+export async function updateMe(input: {
+  defaultView: DefaultView;
+}): Promise<MeResponse> {
+  return apiFetch<MeResponse>('/api/auth/me', {
+    method: 'PATCH',
+    body: input,
+  });
 }
 
 // Client-side mirror of registerSchema in api/src/auth/schemas.ts: fail fast
