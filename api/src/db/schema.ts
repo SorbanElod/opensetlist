@@ -36,6 +36,11 @@ export const songVisibility = pgEnum('song_visibility', [
   'public',
 ]);
 
+// Preferred on-stage view (issue #10): chords for guitarists, lyrics for
+// singers. The arrangement view page defaults to this; manual switching
+// during a session stays client-side and never touches the DB.
+export const defaultView = pgEnum('default_view', ['chords', 'lyrics']);
+
 // Users. password_hash is nullable for future Google-only accounts;
 // for local accounts it is NOT NULL in practice (enforced by the auth layer).
 export const users = pgTable('users', {
@@ -46,6 +51,7 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash'),
   googleId: text('google_id').unique(),
   isSuperadmin: boolean('is_superadmin').notNull().default(false),
+  defaultView: defaultView('default_view').notNull().default('chords'),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),
