@@ -9,11 +9,11 @@ defensible as "we chose X because Y".
 
 | token         | hex     | use                                                            |
 | ------------- | ------- | -------------------------------------------------------------- |
-| bg            | #090D0B | page background                                                |
-| surface       | #0E1412 | card / surface                                                 |
-| raised        | #141B17 | raised / hover                                                 |
-| border        | #1F2A24 | hairline border                                                |
-| border-strong | #2C3A32 | hover border                                                   |
+| bg            | #0A0B0E | page background                                                |
+| surface       | #101216 | card / surface                                                 |
+| raised        | #171A20 | raised / hover                                                 |
+| border        | #22262F | hairline border                                                |
+| border-strong | #303542 | hover border                                                   |
 | text          | #F2F3F5 | primary text                                                   |
 | muted         | #A4AAB4 | muted text                                                     |
 | subtle        | #666C76 | subtle text                                                    |
@@ -27,10 +27,10 @@ the initial default, dark fallback): bg #F4F7F3 / surface #FCFEFB / raised
 #9A9FA8, accent #157A52, on-accent #FFFFFF, error #C7483F.
 
 **Why this palette:** the primary device is a phone on stage, so dark is the
-default and the accent is a single "go/play" green. The neutral ramp carries
-a faint green cast (issue #56) so the accent reads as part of the system
-rather than pasted on gray — the earlier pure-gray neutrals made the theme
-look generic. One accent only; no gradients on surfaces.
+default and the accent is a single "go/play" green. Dark neutrals are plain
+grey — a green cast on them was tried in the first #56 pass and reverted
+(muddy, not cleaner); the green lives only in the accent, which keeps it
+loud where it matters. One accent only; no gradients on surfaces.
 
 ## Type
 

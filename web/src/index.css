@@ -1,19 +1,19 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/inter';
 
-/* Design tokens — decisions and rationale in docs/design-notes.md (issue #56:
-   the neutral ramp carries a faint green cast so the accent belongs to the
-   palette instead of sitting on gray; the accent itself is unchanged).
-   Dark is the default (stage use). In Tailwind v4 every --color-* also
-   becomes a utility (bg-bg, text-muted, border-border, …). The light theme
-   overrides the same variables under [data-theme='light'], so all utilities
-   follow automatically. */
+/* Design tokens — decisions and rationale in docs/design-notes.md. Dark is
+   the default (stage use) and its neutral ramp is plain grey — the green
+   lives ONLY in the accent (the green-cast neutrals from the first #56
+   attempt were reverted: the cast read as muddy, grey reads cleaner).
+   In Tailwind v4 every --color-* also becomes a utility (bg-bg, text-muted,
+   border-border, …). The light theme overrides the same variables under
+   [data-theme='light'], so all utilities follow automatically. */
 @theme {
-  --color-bg: #090d0b;
-  --color-surface: #0e1412;
-  --color-raised: #141b17;
-  --color-border: #1f2a24;
-  --color-border-strong: #2c3a32;
+  --color-bg: #0a0b0e;
+  --color-surface: #101216;
+  --color-raised: #171a20;
+  --color-border: #22262f;
+  --color-border-strong: #303542;
   --color-text: #f2f3f5;
   --color-muted: #a4aab4;
   --color-subtle: #666c76;
