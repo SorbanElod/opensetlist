@@ -1,5 +1,5 @@
 {
-  "$comment": "OpenSetlist dev seed — curated PUBLIC DOMAIN hymns (texts pre-1930, PD in the US) for manual testing. Run `pnpm -C api db:seed` before a test pass: it wipes the group's songs/tags and re-imports this file. Each section's content is ABC 2.1: quoted chord symbols inline on music lines, lyrics on w: lines with one syllable per note (hyphen-joined syllables within a word). Melodies are simplified dev harmonizations, not authoritative settings. Alpha seeding with the team's real repertoire stays with issue #17.",
+  "$comment": "OpenSetlist dev seed — curated PUBLIC DOMAIN songs (texts/compositions pre-1930, PD in the US) for manual testing. Run `pnpm -C api db:seed` before a test pass: it wipes the group's songs/tags, ensures the dev admin login (admin@opensetlist.local / admin), and re-imports this file. Each section's content is ABC 2.1: quoted chord symbols inline on music lines, lyrics on w: lines with one syllable per note (hyphen-joined syllables within a word). Instrumental sections (Canon in D) have chords but no w: lines. Melodies are simplified dev harmonizations, not authoritative settings. Alpha seeding with the team's real repertoire stays with issue #17.",
   "songs": [
     {
       "title": "Amazing Grace",
@@ -28,6 +28,18 @@
             {
               "label": "V3",
               "content": "X:3\nT:Amazing Grace — V3\nC:John Newton\nM:3/4\nL:1/8\nQ:1/4=92\nK:G\n\"G\"G2 G2 c2 | \"C\"c2 G2 G2 | \"D\"D2 B2 G2 | \"Em\"E2 D2 c2 | \"G\"B2 G2 |\nw: 'Twas grace that taught my heart to fear my fears re-lieved by grace"
+            }
+          ]
+        },
+        {
+          "title": "Acoustic (E)",
+          "original_key": "E",
+          "bpm": 76,
+          "default_sequence": ["V1"],
+          "sections": [
+            {
+              "label": "V1",
+              "content": "X:1\nT:Amazing Grace — V1 (Acoustic)\nC:John Newton\nM:3/4\nL:1/8\nQ:1/4=76\nK:E\n\"E\"E2 E2 A2 | \"A\"A2 E2 E2 | \"B7\"B2 G#2 E2 | \"Em\"A2 G2 F#2 | \"E\"F#2 E2 |\nw: A-ma-zing grace how sweet the sound that saved a wretch like me"
             }
           ]
         }
@@ -182,6 +194,153 @@
             {
               "label": "V1",
               "content": "X:1\nT:The Old Rugged Cross — V1\nC:George Bennard\nM:4/4\nL:1/8\nQ:1/4=72\nK:G\n\"G\"G2 G2 G2 c2 | \"C\"c2 B2 A2 G2 | \"D\"G2 G2 G2 | \"G\"G4 |\nw: On a hill far a-way stood an old rug-ged cross"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Silent Night",
+      "authors": { "lyrics": "Joseph Mohr", "music": "Franz Xaver Gruber" },
+      "visibility": "group",
+      "language": "en",
+      "tags": ["worship", "hymn", "public-domain", "christmas"],
+      "arrangements": [
+        {
+          "title": "Standard (C)",
+          "original_key": "C",
+          "bpm": 66,
+          "default_sequence": ["V1"],
+          "sections": [
+            {
+              "label": "V1",
+              "content": "X:1\nT:Silent Night — V1\nC:Joseph Mohr\nM:6/8\nL:1/8\nQ:1/4=66\nK:C\n\"C\"G2 c2 e2 | \"F\"e2 d2 c2 | \"C\"G2 c2 e2 | \"G7\"d2 c2 G2 |\nw: Si-lent night ho-ly night all is calm all is bright"
+            }
+          ]
+        },
+        {
+          "title": "Acoustic (G)",
+          "original_key": "G",
+          "bpm": 60,
+          "default_sequence": ["V1"],
+          "sections": [
+            {
+              "label": "V1",
+              "content": "X:1\nT:Silent Night — V1 (Acoustic)\nC:Joseph Mohr\nM:6/8\nL:1/8\nQ:1/4=60\nK:G\n\"G\"G2 G2 B2 | \"C\"B2 A2 G2 | \"G\"G2 G2 B2 | \"D7\"A2 B2 G2 |\nw: Si-lent night ho-ly night all is calm all is bright"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "O Holy Night",
+      "authors": { "lyrics": "Placide Cappeau", "music": "Adolphe Adam" },
+      "visibility": "group",
+      "language": "en",
+      "tags": ["worship", "hymn", "public-domain", "christmas"],
+      "arrangements": [
+        {
+          "title": "Standard (F)",
+          "original_key": "F",
+          "bpm": 100,
+          "default_sequence": ["V1"],
+          "sections": [
+            {
+              "label": "V1",
+              "content": "X:1\nT:O Holy Night — V1\nC:Adolphe Adam\nM:4/4\nL:1/8\nQ:1/4=100\nK:F\n\"F\"F2 A2 c2 | \"Bb\"c2 A2 F2 | \"Dm\"F2 E2 F2 | \"C\"G2 | \"F\"F4 |\nw: O ho-ly night the stars are bright-ly shin-ing"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Hark! The Herald Angels Sing",
+      "authors": { "lyrics": "Charles Wesley", "music": "Felix Mendelssohn" },
+      "visibility": "group",
+      "language": "en",
+      "tags": ["worship", "hymn", "public-domain", "christmas"],
+      "arrangements": [
+        {
+          "title": "Standard (G)",
+          "original_key": "G",
+          "bpm": 104,
+          "default_sequence": ["V1", "C", "V1", "C"],
+          "sections": [
+            {
+              "label": "V1",
+              "content": "X:1\nT:Hark! The Herald Angels Sing — V1\nC:Charles Wesley\nM:4/4\nL:1/8\nQ:1/4=104\nK:G\n\"G\"G2 G2 G2 B2 | \"C\"c2 c2 B2 A2 | \"D\"G2 A2 B2 G2 | \"G\"G2 G4 |\nw: Hark the he-rald an-gels sing glo-ry to the new-born King"
+            },
+            {
+              "label": "C",
+              "content": "X:2\nT:Hark! The Herald Angels Sing — Chorus\nC:Charles Wesley\nM:4/4\nL:1/8\nQ:1/4=104\nK:G\n\"C\"c2 c2 c2 d2 | \"G\"B2 B2 A2 G2 | \"Em\"E2 E2 D2 E2 | \"D\"D2 G2 |\nw: Christ by high-est heav'n a-dored Christ the ev-er-last-ing Lord"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Hallelujah Chorus (Messiah)",
+      "authors": {
+        "lyrics": "George Frideric Handel",
+        "music": "George Frideric Handel"
+      },
+      "visibility": "group",
+      "language": "en",
+      "tags": ["classical", "public-domain", "oratorio"],
+      "arrangements": [
+        {
+          "title": "Standard (D)",
+          "original_key": "D",
+          "bpm": 132,
+          "default_sequence": ["C"],
+          "sections": [
+            {
+              "label": "C",
+              "content": "X:1\nT:Hallelujah Chorus\nC:G. F. Handel\nM:4/4\nL:1/8\nQ:1/4=132\nK:D\n\"D\"D2 F2 A2 A2 | \"Bb\"A2 G2 F2 G2 | \"Gm\"A2 B2 c2 d2 | \"D\"d2 A2 F2 A2 |\nw: Hal-le-lu-jah hal-le-lu-jah hal-le-lu-jah hal-le-lu-jah"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Ave Maria",
+      "authors": {
+        "lyrics": "attr. Walter Scott (Latin text traditional)",
+        "music": "Franz Schubert"
+      },
+      "visibility": "group",
+      "language": "la",
+      "tags": ["classical", "public-domain", "sacred"],
+      "arrangements": [
+        {
+          "title": "Standard (C)",
+          "original_key": "C",
+          "bpm": 72,
+          "default_sequence": ["V1"],
+          "sections": [
+            {
+              "label": "V1",
+              "content": "X:1\nT:Ave Maria — V1\nC:Franz Schubert\nM:4/4\nL:1/8\nQ:1/4=72\nK:C\n\"C\"G2 G2 c2 e2 | \"F\"e2 d2 c2 G2 | \"Am\"A2 A2 G2 F2 | \"G\"G2 | \"C\"c4 |\nw: A-ve Ma-ri-a gra-ti-a ple-na Do-mi-nus te-cum"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Canon in D",
+      "authors": { "lyrics": "(instrumental)", "music": "Johann Pachelbel" },
+      "visibility": "group",
+      "tags": ["classical", "public-domain", "instrumental"],
+      "arrangements": [
+        {
+          "title": "Standard (D)",
+          "original_key": "D",
+          "bpm": 80,
+          "default_sequence": ["A"],
+          "sections": [
+            {
+              "label": "A",
+              "content": "X:1\nT:Canon in D — A section\nC:Johann Pachelbel\nM:4/4\nL:1/8\nQ:1/4=80\nK:D\n\"D\"D2 F#2 A2 d2 | \"A\"c2 A2 F#2 A2 | \"Bm\"B2 G2 B2 d2 | \"G\"G2 B2 G2 A2 |"
             }
           ]
         }
