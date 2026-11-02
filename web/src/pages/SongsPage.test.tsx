@@ -117,6 +117,12 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// The tag picker lives inside the Filters popover — open it first.
+async function openFilters() {
+  fireEvent.click(screen.getByRole('button', { name: /filters/i }));
+  await screen.findByRole('dialog', { name: 'Filters' });
+}
+
 describe('SongsPage', () => {
   it('lists songs with their tags and filters server-side by search', async () => {
     stubAuthed('member');
@@ -142,6 +148,7 @@ describe('SongsPage', () => {
     renderApp('/songs');
 
     await screen.findByText('Amazing Grace');
+    await openFilters();
     const picker = screen.getByLabelText('Filter by tag');
     fireEvent.change(picker, { target: { value: 'eas' } });
     // suggestion from GET /api/tags?search=eas (debounced)
@@ -162,6 +169,7 @@ describe('SongsPage', () => {
     renderApp('/songs');
 
     await screen.findByText('Amazing Grace');
+    await openFilters();
     const picker = screen.getByLabelText('Filter by tag');
     fireEvent.change(picker, { target: { value: 'christ' } });
     fireEvent.mouseDown(
@@ -174,6 +182,39 @@ describe('SongsPage', () => {
     // only the christmas song matches ~christ
     await waitFor(() => expect(screen.queryByText('Amazing Grace')).toBeNull());
     expect(screen.getByText('Christmas Eve Song')).toBeTruthy();
+  });
+
+  it('opens the filter popover from the Filters button, badges the active count, closes on outside click', async () => {
+    stubAuthed('member');
+    renderApp('/songs');
+
+    await screen.findByText('Amazing Grace');
+    const filtersBtn = screen.getByRole('button', { name: /filters/i });
+    // closed until clicked
+    expect(screen.queryByRole('dialog', { name: 'Filters' })).toBeNull();
+
+    fireEvent.click(filtersBtn);
+    const popover = await screen.findByRole('dialog', { name: 'Filters' });
+    expect(screen.getByLabelText('Filter by tag')).toBeTruthy();
+
+    // pick a tag inside the popover: chip appears, badge counts it
+    fireEvent.change(screen.getByLabelText('Filter by tag'), {
+      target: { value: 'eas' },
+    });
+    fireEvent.mouseDown(await screen.findByRole('button', { name: 'easter' }));
+    expect(
+      await screen.findByLabelText('Remove tag filter easter'),
+    ).toBeTruthy();
+    expect(filtersBtn.textContent).toContain('1');
+    // popover stays open while picking
+    expect(screen.getByRole('dialog', { name: 'Filters' })).toBeTruthy();
+
+    // outside click closes it
+    fireEvent.mouseDown(document.body);
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: 'Filters' })).toBeNull(),
+    );
+    expect(popover).toBeTruthy();
   });
 
   it('shows the New song button to members', async () => {
@@ -199,6 +240,7 @@ describe('SongsPage', () => {
     renderApp('/songs');
 
     await screen.findByText('Amazing Grace');
+    await openFilters();
     const picker = screen.getByLabelText('Filter by tag');
     fireEvent.change(picker, { target: { value: 'eas' } });
     await screen.findByRole('button', { name: 'easter' });
