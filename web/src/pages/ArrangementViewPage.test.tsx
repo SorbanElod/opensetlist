@@ -249,9 +249,12 @@ describe('ArrangementViewPage', () => {
     stubApi('lyrics');
     renderApp('/arrangements/a1');
 
-    // one zoom wrapper around all sections (also scales row spacing)
+    // one zoom wrapper around all sections (also scales row spacing), with
+    // width compensation so the card keeps its on-screen width
     const scaled = await screen.findByTestId('scaled-content');
     expect(scaled.getAttribute('style')).toMatch(/zoom:\s*1(;|$)/);
+    expect(scaled.getAttribute('style')).toContain('width: 100%');
+    expect(screen.queryByTestId('sheet-scroll')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
     expect(scaled.getAttribute('style')).toContain('zoom: 1.1');
@@ -266,19 +269,40 @@ describe('ArrangementViewPage', () => {
     expect(scaled.getAttribute('style')).toContain('zoom: 0.5');
   });
 
-  it('hides the zoom control in sheet view (scaling the staff is a follow-up issue)', async () => {
+  it('zooms the sheet view: staff scales via CSS zoom, scrolls inside the card, bounded 50%–150%', async () => {
     stubApi('sheet');
     renderApp('/arrangements/a1');
 
     await waitFor(() => {
       expect(vi.mocked(renderAbc).mock.calls.length).toBeGreaterThan(0);
     });
-    expect(screen.queryByRole('button', { name: 'Zoom in' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Zoom out' })).toBeNull();
 
-    // but it is available in the text views
-    fireEvent.click(screen.getByRole('button', { name: /lyrics/i }));
-    expect(await screen.findByRole('button', { name: 'Zoom in' })).toBeTruthy();
+    // the zoom control is available in sheet view too
+    const scaled = await screen.findByTestId('scaled-content');
+    expect(scaled.getAttribute('style')).toMatch(/zoom:\s*1(;|$)/);
+    // sheet view: NO width compensation (abcjs responsive mode refits the
+    // SVG to the container, which would cancel the visual scale) — instead
+    // the zoomed staff scrolls inside an in-card overflow wrapper, so it is
+    // never truncated at the viewport edge
+    expect(scaled.getAttribute('style')).not.toContain('width');
+    expect(scaled.getAttribute('style')).toContain('transform-origin');
+    const scroll = screen.getByTestId('sheet-scroll');
+    expect(scroll.className).toContain('overflow-x-auto');
+    expect(scroll.contains(scaled)).toBe(true);
+
+    // zoom in to the 150% ceiling — further clicks disabled
+    const zoomIn = screen.getByRole('button', { name: 'Zoom in' });
+    for (let i = 0; i < 6; i++) fireEvent.click(zoomIn);
+    expect(scaled.getAttribute('style')).toContain('zoom: 1.5');
+    expect(zoomIn).toHaveProperty('disabled', true);
+    fireEvent.click(zoomIn);
+    expect(scaled.getAttribute('style')).toContain('zoom: 1.5');
+
+    // zoom out to the 50% floor — further clicks disabled
+    const out = screen.getByRole('button', { name: 'Zoom out' });
+    for (let i = 0; i < 11; i++) fireEvent.click(out);
+    expect(scaled.getAttribute('style')).toContain('zoom: 0.5');
+    expect(out).toHaveProperty('disabled', true);
   });
 
   it('offers "Set as my default" when the view differs, and PATCHes /api/auth/me', async () => {

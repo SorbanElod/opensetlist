@@ -79,6 +79,17 @@ export function ArrangementRenderer({
     arrangement.defaultSequence,
   );
 
+  const sectionsList = sections.map((section, i) => (
+    <section key={`${section.label}-${i}`} className="py-2">
+      <h2 className="mb-1 text-[13px] font-semibold uppercase tracking-wide text-muted">
+        {section.label}
+      </h2>
+      {/* All views derive from the same stored ABC at render
+          time — nothing derived is persisted. */}
+      {renderSection(section.content)}
+    </section>
+  ));
+
   const segmentClass = (active: boolean) =>
     `flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-semibold transition-colors ${
       active ? 'bg-raised text-text' : 'text-muted hover:text-text'
@@ -88,9 +99,9 @@ export function ArrangementRenderer({
   // flowing HTML chord chart and lyrics plain text — all derived from the
   // same ABC at render time (see lib/abcViews).
   function renderSection(content: string) {
-    // Sheet view: no zoom for now (abcjs responsive mode ignores its scale
-    // param and CSS zoom truncates the staff — follow-up issue). Text views
-    // scale via the compensated zoom wrapper around all sections.
+    // Sheet view: the staff is scaled by the zoom wrapper below (CSS zoom —
+    // abcjs responsive mode ignores its own scale param and refits via
+    // viewBox). Text views scale via the compensated zoom wrapper.
     if (view === 'sheet') return <AbcRenderer abc={sheetAbc(content)} />;
     if (view === 'chords') return <ChordChartView abc={content} />;
     const text = lyricsText(content);
@@ -138,37 +149,33 @@ export function ArrangementRenderer({
             <Mic size={14} /> Lyrics
           </button>
         </div>
-        {/* Zoom is hidden in sheet view for now — scaling the abcjs staff
-            without truncating it needs a follow-up (see issue). */}
-        {view !== 'sheet' && (
-          <div
-            className="inline-flex items-center rounded-md border border-border bg-bg p-0.5"
-            role="group"
-            aria-label="Zoom"
+        <div
+          className="inline-flex items-center rounded-md border border-border bg-bg p-0.5"
+          role="group"
+          aria-label="Zoom"
+        >
+          <button
+            type="button"
+            aria-label="Zoom out"
+            disabled={scale <= ZOOM_MIN}
+            onClick={() => zoomBy(-0.1)}
+            className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
           >
-            <button
-              type="button"
-              aria-label="Zoom out"
-              disabled={scale <= ZOOM_MIN}
-              onClick={() => zoomBy(-0.1)}
-              className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
-            >
-              <Minus size={13} />
-            </button>
-            <span className="w-9 text-center text-[11px] tabular-nums text-muted">
-              {Math.round(scale * 100)}%
-            </span>
-            <button
-              type="button"
-              aria-label="Zoom in"
-              disabled={scale >= ZOOM_MAX}
-              onClick={() => zoomBy(0.1)}
-              className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
-            >
-              <Plus size={13} />
-            </button>
-          </div>
-        )}
+            <Minus size={13} />
+          </button>
+          <span className="w-9 text-center text-[11px] tabular-nums text-muted">
+            {Math.round(scale * 100)}%
+          </span>
+          <button
+            type="button"
+            aria-label="Zoom in"
+            disabled={scale >= ZOOM_MAX}
+            onClick={() => zoomBy(0.1)}
+            className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
+          >
+            <Plus size={13} />
+          </button>
+        </div>
         {!isDefault && (
           <button
             type="button"
@@ -201,26 +208,29 @@ export function ArrangementRenderer({
       <div className="card px-4 py-2" data-testid="arrangement-sections">
         {/* Text views: `zoom` scales text, labels and the spacing between
             sections; the width compensation keeps the card at its normal
-            on-screen width (text wraps, nothing is cut off). Sheet view:
-            no compensation here — the SVG scales via its own zoom wrapper
-            and scrolls inside the section instead of overflowing the page. */}
-        <div
-          style={
-            view === 'sheet' ? {} : { zoom: scale, width: `${100 / scale}%` }
-          }
-          data-testid="scaled-content"
-        >
-          {sections.map((section, i) => (
-            <section key={`${section.label}-${i}`} className="py-2">
-              <h2 className="mb-1 text-[13px] font-semibold uppercase tracking-wide text-muted">
-                {section.label}
-              </h2>
-              {/* All views derive from the same stored ABC at render
-                  time — nothing derived is persisted. */}
-              {renderSection(section.content)}
-            </section>
-          ))}
-        </div>
+            on-screen width (text wraps, nothing is cut off). Sheet view: NO
+            width compensation — abcjs responsive mode refits the SVG to the
+            container width, which would cancel the visual scale. The staff
+            is zoomed for real (origin top-left) and the scroll wrapper keeps
+            the overflow inside the card, so it is never truncated at the
+            viewport edge — an obvious in-card horizontal scroll instead. */}
+        {view === 'sheet' ? (
+          <div className="overflow-x-auto" data-testid="sheet-scroll">
+            <div
+              style={{ zoom: scale, transformOrigin: 'top left' }}
+              data-testid="scaled-content"
+            >
+              {sectionsList}
+            </div>
+          </div>
+        ) : (
+          <div
+            style={{ zoom: scale, width: `${100 / scale}%` }}
+            data-testid="scaled-content"
+          >
+            {sectionsList}
+          </div>
+        )}
       </div>
     </>
   );
