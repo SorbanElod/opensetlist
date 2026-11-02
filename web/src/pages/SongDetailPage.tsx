@@ -6,6 +6,7 @@ import { ApiError } from '../api/client';
 import { listArrangements, type Arrangement } from '../api/arrangements';
 import { deleteSong, getSong, type Song } from '../api/songs';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
+import { ArrangementRenderer } from '../components/ArrangementRenderer';
 
 export function SongDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -18,6 +19,11 @@ export function SongDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // Local-only selection for the inline renderer (issue #51) — never
+  // persisted. Defaults to the newest arrangement (see below).
+  const [selectedArrangementId, setSelectedArrangementId] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     if (!id) return;
@@ -46,6 +52,14 @@ export function SongDetailPage() {
 
   const canEdit =
     auth.status === 'authenticated' && canWrite(role, auth.user.isSuperadmin);
+
+  // The "default" arrangement is implicit — the newest one: the first row of
+  // listArrangements, which the API orders by created_at DESC (design
+  // decision in issue #51: no persisted default_arrangement_id).
+  const selectedArrangement =
+    arrangements?.find((a) => a.id === selectedArrangementId) ??
+    arrangements?.[0] ??
+    null;
 
   async function onDelete() {
     if (!song) return;
@@ -142,6 +156,42 @@ export function SongDetailPage() {
               </dd>
             </div>
           </dl>
+
+          {/* Issue #51: the newest arrangement renders inline, right below
+              the metadata — no click-through to the on-stage page. All
+              arrangements are already fetched, so switching arrangements or
+              views costs no extra server round-trips. Readers see the same
+              inline content (the read API already allows it). */}
+          {selectedArrangement && (
+            <div className="mt-6 border-t border-border pt-5">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="min-w-0 truncate text-[15px] font-semibold">
+                  {selectedArrangement.title}
+                  <span className="ml-2 font-mono text-[11.5px] font-normal text-muted">
+                    {selectedArrangement.originalKey}
+                    {selectedArrangement.bpm !== null
+                      ? ` · ${selectedArrangement.bpm} BPM`
+                      : ''}
+                  </span>
+                </p>
+                {arrangements !== null && arrangements.length > 1 && (
+                  <select
+                    className="input shrink-0"
+                    aria-label="Arrangement"
+                    value={selectedArrangement.id}
+                    onChange={(e) => setSelectedArrangementId(e.target.value)}
+                  >
+                    {arrangements.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.title}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              <ArrangementRenderer arrangement={selectedArrangement} />
+            </div>
+          )}
 
           <div className="mt-6">
             <div className="mb-2 flex items-center justify-between gap-2">
