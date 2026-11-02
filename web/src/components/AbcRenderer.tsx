@@ -51,7 +51,7 @@ export function AbcRenderer({
       <div
         ref={targetRef}
         data-testid="abc-renderer"
-        className="overflow-x-auto rounded-lg p-2 text-text [&_svg]:max-w-full"
+        className="overflow-x-auto rounded-lg p-1 text-text [&_svg]:max-w-full"
       />
       {warning && <p className="field-error">{warning}</p>}
     </div>

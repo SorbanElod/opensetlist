@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { chordChartLines, lyricsText, orderedSections } from './abcViews';
+import {
+  chordChartLines,
+  lyricsText,
+  orderedSections,
+  sheetAbc,
+} from './abcViews';
 import type { ArrangementSection } from '../api/arrangements';
 
 const sections: ArrangementSection[] = [
@@ -138,5 +143,24 @@ describe('chordChartLines', () => {
         [{ chord: 'D', syllable: '', wordEnd: true }],
       ],
     ]);
+  });
+});
+
+describe('sheetAbc', () => {
+  it('strips T: and C: header lines but keeps the fields abcjs needs', () => {
+    const abc =
+      'X:1\nT:Amazing Grace — V1\nC:John Newton\nM:3/4\nK:G\n"G"G2 A2 |\nw: a-ma-zing grace';
+    const out = sheetAbc(abc);
+    expect(out).not.toContain('T:');
+    expect(out).not.toContain('C:');
+    expect(out).toContain('X:1');
+    expect(out).toContain('M:3/4');
+    expect(out).toContain('K:G');
+    expect(out).toContain('w: a-ma-zing grace');
+  });
+
+  it('leaves music lines untouched (quoted chords are not C: fields)', () => {
+    const abc = 'X:1\nK:G\n"C"c2 B2 |\nw: how sweet';
+    expect(sheetAbc(abc)).toBe(abc);
   });
 });

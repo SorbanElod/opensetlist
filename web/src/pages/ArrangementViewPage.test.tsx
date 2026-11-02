@@ -206,6 +206,45 @@ describe('ArrangementViewPage', () => {
     expect(arrangementCalls()).toBe(1);
   });
 
+  it('sheet view strips T:/C: header lines so title/author are not repeated per section', async () => {
+    const ABC =
+      'X:1\nT:Amazing Grace — V1\nC:John Newton\nK:G\n"G"G2 A2 |\nw: a-ma-zing grace';
+    stubFetch((path) => {
+      if (path === '/api/auth/me')
+        return {
+          status: 200,
+          body: {
+            user: USER,
+            memberships: [{ groupId: 'g1', role: 'member' }],
+          },
+        };
+      if (path === '/api/arrangements/a1')
+        return {
+          status: 200,
+          body: {
+            arrangement: {
+              ...ARRANGEMENT,
+              defaultSequence: ['V1'],
+              sections: [{ label: 'V1', content: ABC }],
+            },
+          },
+        };
+      if (path === '/api/songs/s1')
+        return { status: 200, body: { song: SONG } };
+      return { status: 404, body: {} };
+    });
+    renderApp('/arrangements/a1');
+
+    await waitFor(() => {
+      expect(vi.mocked(renderAbc).mock.calls.length).toBeGreaterThan(0);
+    });
+    const rendered = String(vi.mocked(renderAbc).mock.calls[0]![1]);
+    expect(rendered).not.toContain('T:');
+    expect(rendered).not.toContain('C:John');
+    expect(rendered).toContain('K:G');
+    expect(rendered).toContain('w: a-ma-zing grace');
+  });
+
   it('offers "Set as my default" when the view differs, and PATCHes /api/auth/me', async () => {
     const fn = stubApi('sheet');
     renderApp('/arrangements/a1');

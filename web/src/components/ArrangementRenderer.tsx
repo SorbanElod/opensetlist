@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Guitar, Mic, Music } from 'lucide-react';
 
 import { ApiError } from '../api/client';
 import type { Arrangement } from '../api/arrangements';
 import { useAuth } from '../auth/AuthContext';
-import { lyricsText, orderedSections, type ViewMode } from '../lib/abcViews';
+import {
+  lyricsText,
+  orderedSections,
+  sheetAbc,
+  type ViewMode,
+} from '../lib/abcViews';
 import { AbcRenderer } from './AbcRenderer';
 import { ChordChartView } from './ChordChartView';
 
@@ -17,8 +22,12 @@ import { ChordChartView } from './ChordChartView';
 // persists the choice.
 export function ArrangementRenderer({
   arrangement,
+  trailing,
 }: {
   arrangement: Arrangement;
+  // Optional control docked at the right end of the view-toggle row (the
+  // arrangement switcher on the song detail page).
+  trailing?: ReactNode;
 }) {
   const auth = useAuth();
 
@@ -68,7 +77,7 @@ export function ArrangementRenderer({
   // flowing HTML chord chart and lyrics plain text — all derived from the
   // same ABC at render time (see lib/abcViews).
   function renderSection(content: string) {
-    if (view === 'sheet') return <AbcRenderer abc={content} />;
+    if (view === 'sheet') return <AbcRenderer abc={sheetAbc(content)} />;
     if (view === 'chords') return <ChordChartView abc={content} />;
     const text = lyricsText(content);
     return text.trim() ? (
@@ -84,7 +93,7 @@ export function ArrangementRenderer({
 
   return (
     <>
-      <div className="mb-4 flex items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <div
           className="inline-flex rounded-md border border-border bg-bg p-0.5"
           role="group"
@@ -125,6 +134,9 @@ export function ArrangementRenderer({
             {savingDefault ? 'Saving…' : 'Set as my default'}
           </button>
         )}
+        {trailing && (
+          <div className="ml-auto flex items-center">{trailing}</div>
+        )}
       </div>
 
       {saveError && (
@@ -139,10 +151,12 @@ export function ArrangementRenderer({
         </p>
       )}
 
-      <div className="flex flex-col gap-3">
+      {/* All sections in ONE panel with no separators — just whitespace;
+          each section's label heading is the only structure. */}
+      <div className="card px-4 py-2">
         {sections.map((section, i) => (
-          <section key={`${section.label}-${i}`} className="card p-4">
-            <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-muted">
+          <section key={`${section.label}-${i}`} className="py-2">
+            <h2 className="mb-1 text-[13px] font-semibold uppercase tracking-wide text-muted">
               {section.label}
             </h2>
             {/* All views derive from the same stored ABC at render

@@ -166,32 +166,34 @@ export function SongDetailPage() {
               inline content (the read API already allows it). */}
           {selectedArrangement && (
             <div className="mt-6 border-t border-border pt-5">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="min-w-0 truncate text-[15px] font-semibold">
-                  {selectedArrangement.title}
-                  <span className="ml-2 font-mono text-[11.5px] font-normal text-muted">
-                    {selectedArrangement.originalKey}
-                    {selectedArrangement.bpm !== null
-                      ? ` · ${selectedArrangement.bpm} BPM`
-                      : ''}
-                  </span>
-                </p>
-                {arrangements !== null && arrangements.length > 1 && (
-                  <select
-                    className="input shrink-0"
-                    aria-label="Arrangement"
-                    value={selectedArrangement.id}
-                    onChange={(e) => setSelectedArrangementId(e.target.value)}
-                  >
-                    {arrangements.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.title}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-              <ArrangementRenderer arrangement={selectedArrangement} />
+              <p className="mb-2 min-w-0 truncate text-[15px] font-semibold">
+                {selectedArrangement.title}
+                <span className="ml-2 font-mono text-[11.5px] font-normal tabular-nums text-muted">
+                  {selectedArrangement.originalKey}
+                  {selectedArrangement.bpm !== null
+                    ? ` · ${selectedArrangement.bpm} BPM`
+                    : ''}
+                </span>
+              </p>
+              <ArrangementRenderer
+                arrangement={selectedArrangement}
+                trailing={
+                  arrangements !== null && arrangements.length > 1 ? (
+                    <select
+                      className="input w-auto shrink-0 font-mono text-[12.5px]"
+                      aria-label="Arrangement"
+                      value={selectedArrangement.id}
+                      onChange={(e) => setSelectedArrangementId(e.target.value)}
+                    >
+                      {arrangements.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.title}
+                        </option>
+                      ))}
+                    </select>
+                  ) : undefined
+                }
+              />
             </div>
           )}
 

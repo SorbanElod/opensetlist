@@ -46,6 +46,17 @@ export function orderedSections(
 // directives and % comments.
 const NON_MUSIC_LINE = /^([A-Za-z][A-Za-z0-9_]*:|%%|%)/;
 
+// Sheet view strips the per-section T: (title) and C: (composer) header
+// lines before rendering: the page already shows the song title and each
+// section carries its label heading — repeating both inside every staff is
+// noise. K:/M:/X: stay: abcjs needs them to render correctly.
+export function sheetAbc(abc: string): string {
+  return abc
+    .split('\n')
+    .filter((line) => !/^(T|C):/.test(line.trimStart()))
+    .join('\n');
+}
+
 // One item of the chord chart: a lyric syllable and the chord name sitting
 // on its note (null when the note has no chord). wordEnd marks the last
 // syllable of a word, so the renderer can put a space after it.
