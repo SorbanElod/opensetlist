@@ -5,16 +5,8 @@ import {
   type ChangeEvent,
   type KeyboardEvent,
 } from 'react';
-import { Link, useNavigate } from 'react-router';
-import {
-  Check,
-  ChevronRight,
-  Plus,
-  Search,
-  Trash2,
-  Upload,
-  X,
-} from 'lucide-react';
+import { useNavigate } from 'react-router';
+import { Check, Plus, Search, Trash2, Upload, X } from 'lucide-react';
 
 import { ApiError } from '../api/client';
 import {
@@ -25,6 +17,9 @@ import {
 } from '../api/songs';
 import { deleteTag, listTags, type Tag } from '../api/tags';
 import { canManage, canWrite, useAuth, useMyRole } from '../auth/AuthContext';
+import { EmptyState } from '../components/EmptyState';
+import { ListRow } from '../components/ListRow';
+import { PageHeader } from '../components/PageHeader';
 
 export function SongsPage() {
   const auth = useAuth();
@@ -181,35 +176,37 @@ export function SongsPage() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <h1 className="text-[22px] font-bold tracking-tight">Songs</h1>
-        {canEdit && (
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload size={15} /> Import JSON
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => navigate('/songs/new')}
-            >
-              <Plus size={15} /> New song
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="application/json,.json"
-              className="hidden"
-              aria-label="Import songs from JSON"
-              onChange={onImportFile}
-            />
-          </div>
-        )}
-      </div>
+      <PageHeader
+        title="Songs"
+        actions={
+          canEdit && (
+            <>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload size={15} /> Import JSON
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => navigate('/songs/new')}
+              >
+                <Plus size={15} /> New song
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                aria-label="Import songs from JSON"
+                onChange={onImportFile}
+              />
+            </>
+          )
+        }
+      />
 
       <div className="relative mb-3">
         <Search
@@ -300,7 +297,7 @@ export function SongsPage() {
       {(selectedTags.length > 0 || tagLike !== null) && (
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
           <div
-            className="flex overflow-hidden rounded-lg border border-border"
+            className="flex overflow-hidden rounded-md border border-border"
             role="group"
             aria-label="Tag match mode"
           >
@@ -328,7 +325,7 @@ export function SongsPage() {
           {selectedTags.map((name) => (
             <span
               key={name}
-              className="inline-flex items-center gap-1 rounded-lg border border-accent-border bg-accent-soft px-2 py-0.5 font-mono text-[12px] text-accent"
+              className="inline-flex items-center gap-1 rounded-md border border-accent-border bg-accent-soft px-2 py-0.5 font-mono text-[12px] text-accent"
             >
               {name}
               <button
@@ -344,7 +341,7 @@ export function SongsPage() {
             </span>
           ))}
           {tagLike !== null && (
-            <span className="inline-flex items-center gap-1 rounded-lg border border-accent-border bg-accent-soft px-2 py-0.5 font-mono text-[12px] text-accent">
+            <span className="inline-flex items-center gap-1 rounded-md border border-accent-border bg-accent-soft px-2 py-0.5 font-mono text-[12px] text-accent">
               ~{tagLike}
               <button
                 type="button"
@@ -367,7 +364,7 @@ export function SongsPage() {
       {info && (
         <p
           role="status"
-          className="mb-3 rounded-lg border border-accent-border bg-accent-soft px-3 py-2 text-[12.5px] text-accent"
+          className="mb-3 rounded-md border border-accent-border bg-accent-soft px-3 py-2 text-[12.5px] text-accent"
         >
           {info}
         </p>
@@ -378,34 +375,24 @@ export function SongsPage() {
       )}
 
       {songs !== null && songs.length === 0 && (
-        <div className="card rounded-2xl p-5">
-          <p className="text-[13.5px] text-muted">
-            {filtering ? 'No songs match your filters.' : 'No songs yet.'}
-          </p>
-          {canEdit && !filtering && (
-            <Link
-              to="/songs/new"
-              className="mt-3 inline-flex font-semibold text-accent"
-            >
-              Add the first song
-            </Link>
-          )}
-        </div>
+        <EmptyState
+          action={
+            canEdit && !filtering
+              ? { to: '/songs/new', label: 'Add the first song' }
+              : undefined
+          }
+        >
+          {filtering ? 'No songs match your filters.' : 'No songs yet.'}
+        </EmptyState>
       )}
 
-      <div className="flex flex-col gap-1.5">
+      <div className="list">
         {songs?.map((song) => (
-          <button
+          <ListRow
             key={song.id}
-            type="button"
-            className="card flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors hover:border-border-strong hover:bg-raised"
-            onClick={() => navigate(`/songs/${song.id}`)}
-          >
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[13.5px] font-semibold">
-                {song.title}
-              </div>
-              <div className="truncate text-[11.5px] text-muted">
+            title={song.title}
+            meta={
+              <>
                 {song.author ?? '—'}
                 {song.tags.length > 0 && (
                   <span className="text-subtle">
@@ -413,16 +400,20 @@ export function SongsPage() {
                     · {song.tags.join(' · ')}
                   </span>
                 )}
-              </div>
-            </div>
-            <span className="shrink-0 rounded-md bg-raised px-2 py-0.5 font-mono text-[12.5px] font-semibold text-text">
-              {song.defaultKey}
-            </span>
-            <span className="hidden shrink-0 text-[10.5px] text-subtle sm:inline">
-              {new Date(song.createdAt).toLocaleDateString()}
-            </span>
-            <ChevronRight size={16} className="shrink-0 text-subtle" />
-          </button>
+              </>
+            }
+            trailing={
+              <>
+                <span className="shrink-0 rounded-md border border-accent-border bg-accent-soft px-2 py-0.5 font-mono text-[12.5px] font-semibold tabular-nums text-accent">
+                  {song.defaultKey}
+                </span>
+                <span className="hidden shrink-0 text-[10.5px] tabular-nums text-subtle sm:inline">
+                  {new Date(song.createdAt).toLocaleDateString()}
+                </span>
+              </>
+            }
+            onClick={() => navigate(`/songs/${song.id}`)}
+          />
         ))}
       </div>
     </div>

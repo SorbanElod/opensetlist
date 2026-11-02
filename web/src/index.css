@@ -63,9 +63,38 @@ body {
    overridden by them (e.g. class="input pl-10": pl-10 wins over the padding
    below). State styles that never conflict stay as plain CSS underneath. */
 
+/* Radius scale (issue #56, v2): panels 8px, controls 6px, list rows square
+   with hairline dividers — sharp edges read deliberate, not generated. */
 @utility card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+/* A list is ONE panel; rows are divided by hairlines instead of each being
+   its own card (the old wall-of-rounded-cards look). Rows are direct
+   children of .list so the divider selector stays trivial. */
+@utility list {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+@utility list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
 @utility btn {
@@ -76,7 +105,7 @@ body {
   min-height: 40px; /* tap target on mobile (design rule: >= 40px) */
   padding: 8px 14px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
   line-height: 1;
@@ -115,7 +144,7 @@ body {
   padding: 9px 12px;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: 6px;
   color: var(--color-text);
   font-size: 13.5px;
   outline: none;
@@ -154,7 +183,7 @@ body {
   padding: 0.75rem 1rem;
   background: var(--color-error-soft);
   border: 1px solid var(--color-error);
-  border-radius: 10px;
+  border-radius: 6px;
   color: var(--color-error);
   font-size: 13px;
 }
@@ -168,6 +197,14 @@ body {
 .btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.list > * + * {
+  border-top: 1px solid var(--color-border);
+}
+
+.list-row:hover {
+  background: var(--color-raised);
 }
 
 .btn-outline:hover,

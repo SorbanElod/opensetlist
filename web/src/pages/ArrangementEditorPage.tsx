@@ -24,6 +24,7 @@ import {
 import { getSong, KEYS, type Song } from '../api/songs';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 import { AbcRenderer } from '../components/AbcRenderer';
+import { PageHeader } from '../components/PageHeader';
 
 // One page serves both modes: /songs/:songId/arrangements/new (create) and
 // /arrangements/:id/edit (edit). The section editor submits the whole
@@ -261,16 +262,16 @@ export function ArrangementEditorPage() {
         <ArrowLeft size={15} /> {song ? song.title : 'Songs'}
       </Link>
 
-      <h1 className="mb-1 text-[22px] font-bold tracking-tight">
-        {isEdit ? 'Edit arrangement' : 'New arrangement'}
-      </h1>
-      <p className="mb-5 text-[13px] text-muted">
-        {song
-          ? `A musical variant of “${song.title}” — sections hold the ABC notation.`
-          : 'Sections hold the ABC notation; the sequence is the play order.'}
-      </p>
+      <PageHeader
+        title={isEdit ? 'Edit arrangement' : 'New arrangement'}
+        subtitle={
+          song
+            ? `A musical variant of “${song.title}” — sections hold the ABC notation.`
+            : 'Sections hold the ABC notation; the sequence is the play order.'
+        }
+      />
 
-      <div className="card rounded-2xl p-5">
+      <div className="card p-5">
         {error && (
           <div className="error-banner" role="alert">
             {error}
@@ -447,7 +448,7 @@ export function ArrangementEditorPage() {
             )}
             <div className="flex flex-col gap-3">
               {sections.map((section, i) => (
-                <div key={i} className="card rounded-xl p-4">
+                <div key={i} className="card p-4">
                   <div className="mb-2 flex items-center gap-2">
                     <input
                       className="input flex-1 font-mono"
@@ -508,7 +509,7 @@ export function ArrangementEditorPage() {
           <div className="mt-5">
             <span className="flabel">Live preview</span>
             {preview ? (
-              <div className="card mt-2 rounded-xl p-4">
+              <div className="card mt-2 p-4">
                 <select
                   className="input mb-3 font-mono"
                   aria-label="Preview section"

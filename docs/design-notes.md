@@ -40,22 +40,36 @@ body · 11.5/500 meta · mono for keys/BPM/ABC. A display font for the wordmark
 and screen titles was considered and rejected (issue #56): no new font
 dependencies in the MVP — Inter at 700 with tight tracking carries the titles.
 
-## Rules of thumb
+## Rules of thumb (v2 — the "human pass", issue #56)
 
-- 4px spacing grid; radii: 10px controls, 12–16px cards, 999px chips
-- one accent color only; borders over shadows in dark; hairline 1px borders
-- tap targets ≥ 40px on mobile (we use 44px)
-- navigation: a top header bar on all screen sizes (Home / Songs in the
-  shell). The mobile bottom tab bar from the early sketch was NOT adopted —
-  the app has two primary destinations, a header is simpler and works in
-  landscape on stage. Revisit when setlists (#12) add a third destination.
+- One radius scale, deliberately sharp: **panels 8px** (`.card`, `.list`,
+  menus, banners), **controls 6px** (`.btn`, `.input`, chips, segmented),
+  list rows square. The earlier 10–16px radii everywhere read generated.
+- Lists are ONE panel with hairline-divided rows (`.list` + `.list-row`),
+  not a wall of individual rounded cards.
+- 4px spacing grid; one accent color only; borders over shadows in dark;
+  hairline 1px borders; tap targets ≥ 40px on mobile (we use 44px)
+- navigation: a sticky top header on all screen sizes; the active route gets
+  a 2px accent underline along the header's bottom edge. The mobile bottom
+  tab bar from the early sketch was NOT adopted — the app has two primary
+  destinations, a header is simpler and works in landscape on stage.
+  Revisit when setlists (#12) add a third destination.
+- numbers (dates, BPM, keys) use `tabular-nums`; keys render as an
+  accent-tinted mono chip
 
-## Components (in index.css as plain classes)
+## Components
 
-`.card`, `.btn` + `.btn-primary`/`.btn-outline`/`.btn-ghost` (`.btn-block`),
-`.input` (focus ring = accent-soft), `.flabel` (uppercase 11.5px), `.field`,
-`.field-error`, `.error-banner`. Segmented control (the Sheet | Chords |
-Lyrics view toggle) shipped in P2.4 as an inline-flex button group.
+CSS utilities in index.css: `.card` (panel: surface + border + 8px),
+`.list` / `.list-row`, `.btn` + `.btn-primary`/`.btn-outline`/`.btn-ghost`
+(`.btn-block`), `.input` (focus ring = accent-soft), `.flabel` (uppercase
+11.5px), `.field`, `.field-error`, `.error-banner`. Segmented control (the
+Sheet | Chords | Lyrics view toggle) is an inline-flex button group.
+
+Shared React components (`web/src/components/`) — every page composes these
+instead of ad-hoc markup: `PageHeader` (title + subtitle + actions),
+`ListRow` (one list-row pattern for songs and arrangements), `EmptyState`
+(message + optional CTA), `ArrangementRenderer` (the one section-render
+pipeline), `LogoMark`, `AppShell`, `ThemeToggle`.
 
 ## Decisions taken
 
@@ -63,8 +77,8 @@ Lyrics view toggle) shipped in P2.4 as an inline-flex button group.
 - Logo mark: hand-drawn inline SVG — three staff lines with an eighth note in
   the accent (`LogoMark` component), not a colored tile with an icon glyph
   (issue #56).
-- Active nav item carries a small accent dot (issue #56) — the one signature
-  accent moment in the shell.
+- Active nav item carries a 2px accent underline along the sticky header's
+  bottom edge (issue #56) — the one signature accent moment in the shell.
 - framer-motion NOT adopted: transitions are plain CSS. Revisit for the P3
   live view.
 - Screens beyond auth (home dashboard / library / song / editor / setlists)

@@ -5,22 +5,25 @@ import { useAuth, useUser } from '../auth/AuthContext';
 import { LogoMark } from './LogoMark';
 import { ThemeToggle } from './ThemeToggle';
 
+// Nav links fill the header height; the active route gets a 2px accent
+// underline along the header's bottom edge (issue #56) — sharper and more
+// deliberate than a pill background.
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-  `rounded-lg px-3 py-1.5 text-[13px] font-semibold transition-colors ${
-    isActive ? 'bg-raised text-text' : 'text-muted hover:text-text'
+  `relative flex h-full items-center px-3 text-[13px] font-semibold transition-colors ${
+    isActive ? 'text-text' : 'text-muted hover:text-text'
   }`;
 
-// The active nav item carries a small accent dot (issue #56) — always
-// rendered so the label doesn't shift when the active route changes.
 function navLabel(isActive: boolean, label: string) {
   return (
-    <span className="flex items-center gap-1.5">
-      <span
-        aria-hidden
-        className={`h-1 w-1 rounded-full ${isActive ? 'bg-accent' : 'bg-transparent'}`}
-      />
+    <>
       {label}
-    </span>
+      {isActive && (
+        <span
+          aria-hidden
+          className="absolute inset-x-2 bottom-0 h-[2px] bg-accent"
+        />
+      )}
+    </>
   );
 }
 
@@ -45,15 +48,17 @@ export function AppShell() {
 
   return (
     <main className="min-h-svh bg-bg text-text">
-      <header className="border-b border-border bg-surface">
+      {/* sticky: long song lists scroll under the header, nav stays reachable
+          on stage (issue #56). */}
+      <header className="sticky top-0 z-20 border-b border-border bg-surface">
         <div className="mx-auto flex h-14 w-full max-w-[720px] items-center gap-4 px-4 sm:px-6 md:max-w-[880px] lg:px-8 xl:max-w-[1020px]">
           <NavLink to="/" className="flex items-center gap-2.5">
-            <LogoMark size={26} />
+            <LogoMark size={28} />
             <span className="text-[15px] font-bold tracking-tight">
               OpenSetlist
             </span>
           </NavLink>
-          <nav className="flex items-center gap-1">
+          <nav className="flex h-full items-center gap-1 self-stretch">
             <NavLink to="/" end className={navLinkClass}>
               {({ isActive }) => navLabel(isActive, 'Home')}
             </NavLink>
@@ -68,7 +73,7 @@ export function AppShell() {
             <ThemeToggle />
             <button
               type="button"
-              className="btn btn-outline"
+              className="btn btn-ghost"
               onClick={onLogout}
               disabled={loggingOut}
             >

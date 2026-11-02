@@ -15,6 +15,7 @@ import {
   type SongVisibility,
 } from '../api/songs';
 import { listTags, type Tag } from '../api/tags';
+import { PageHeader } from '../components/PageHeader';
 
 const VISIBILITIES: { value: SongVisibility; label: string }[] = [
   { value: 'group', label: 'Group library' },
@@ -194,14 +195,12 @@ export function SongFormPage() {
         <ArrowLeft size={15} /> Songs
       </Link>
 
-      <h1 className="mb-1 text-[22px] font-bold tracking-tight">
-        {isEdit ? 'Edit song' : 'New song'}
-      </h1>
-      <p className="mb-5 text-[13px] text-muted">
-        Metadata lives on the song; the music lives in its arrangements (P2.3).
-      </p>
+      <PageHeader
+        title={isEdit ? 'Edit song' : 'New song'}
+        subtitle="Metadata lives on the song; the music lives in its arrangements (P2.3)."
+      />
 
-      <div className="card rounded-2xl p-5">
+      <div className="card p-5">
         {error && (
           <div className="error-banner" role="alert">
             {error}
@@ -316,7 +315,7 @@ export function SongFormPage() {
                 {tags.map((t) => (
                   <span
                     key={t}
-                    className="inline-flex items-center gap-1 rounded-lg border border-border bg-raised px-2 py-0.5 font-mono text-[12px]"
+                    className="inline-flex items-center gap-1 rounded-md border border-border bg-raised px-2 py-0.5 font-mono text-[12px]"
                   >
                     {t}
                     <button

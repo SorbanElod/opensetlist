@@ -86,7 +86,7 @@ export function ArrangementRenderer({
     <>
       <div className="mb-4 flex items-center gap-2">
         <div
-          className="inline-flex rounded-lg border border-border bg-bg p-0.5"
+          className="inline-flex rounded-md border border-border bg-bg p-0.5"
           role="group"
           aria-label="View"
         >
@@ -141,10 +141,7 @@ export function ArrangementRenderer({
 
       <div className="flex flex-col gap-3">
         {sections.map((section, i) => (
-          <section
-            key={`${section.label}-${i}`}
-            className="card rounded-xl p-4"
-          >
+          <section key={`${section.label}-${i}`} className="card p-4">
             <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-muted">
               {section.label}
             </h2>
