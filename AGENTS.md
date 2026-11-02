@@ -55,6 +55,7 @@ Rules:
 7. **Plan before execute:** show the file tree / dependency list and wait for approval before writing code on anything non-trivial.
 8. **Agent writes tests; Előd runs them.** Tests are part of the work, not an afterthought.
 9. **Postman collection stays current.** `postman/OpenSetlist.postman_collection.json` is the browsable API contract: any PR that adds or changes an endpoint updates the collection in the same PR — request, expected status codes, and example responses.
+10. **Current state lives on the issue board, not in this file.** Get the current phase and scope from the issues (they carry `[P#.x]` prefixes — `gh issue list`), don't guess. If something comes up that is outside the current issue's scope, create a new issue for it first — never fold it into the running PR.
 
 ## Collaboration expectations
 
