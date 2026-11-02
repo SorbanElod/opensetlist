@@ -158,6 +158,10 @@ describe('ArrangementViewPage', () => {
     expect((await screen.findAllByText('amazing grace')).length).toBe(2);
     expect(screen.getByText('how sweet')).toBeTruthy();
     expect(screen.queryByText(/\bG\b a ma/)).toBeNull();
+    // Sans typeface like the chords view, not the mono dump.
+    const lyricEl = screen.getAllByText('amazing grace')[0]!;
+    expect(lyricEl.className).toContain('text-[15px]');
+    expect(lyricEl.className).not.toContain('font-mono');
   });
 
   it('switches between all three views locally without refetching the arrangement', async () => {

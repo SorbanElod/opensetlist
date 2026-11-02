@@ -102,9 +102,11 @@ export function ArrangementViewPage() {
     if (view === 'chords') return <ChordChartView abc={content} />;
     const text = lyricsText(content);
     return text.trim() ? (
-      <pre className="whitespace-pre-wrap break-words font-mono text-[14px] leading-relaxed text-text">
+      // Same typeface and size as the chords view's syllable row — only the
+      // chords are missing here. pre-wrap keeps the verse line breaks.
+      <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-text">
         {text}
-      </pre>
+      </p>
     ) : (
       <p className="hint">No lyrics (w: lines) in this section.</p>
     );
