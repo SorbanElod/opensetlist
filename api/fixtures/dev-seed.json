@@ -1,81 +1,187 @@
 {
-  "$comment": "OpenSetlist dev seed — 2 placeholder songs (lorem ipsum) for testing the P2 pages. Structure follows the drafted MVP schema: songs -> arrangements -> sections[{label, kind, content}]. Each section's content is ABC 2.1 (abcjs-parseable): chord symbols as quoted annotations, lyrics on w: lines aligned 1 syllable per note. Chord annotations are simplified placeholder harmonizations, not authoritative. Import via POST /api/songs/import (song-level fields only; arrangements/tags are skipped until #9/#20). Real songs for the alpha land with issue #17.",
-  "tags": ["worship", "classic", "acoustic"],
+  "$comment": "OpenSetlist dev seed — curated PUBLIC DOMAIN hymns (texts pre-1930, PD in the US) for manual testing. Run `pnpm -C api db:seed` before a test pass: it wipes the group's songs/tags and re-imports this file. Each section's content is ABC 2.1: quoted chord symbols inline on music lines, lyrics on w: lines with one syllable per note (hyphen-joined syllables within a word). Melodies are simplified dev harmonizations, not authoritative settings. Alpha seeding with the team's real repertoire stays with issue #17.",
   "songs": [
     {
-      "title": "Lorem Ipsum Dolor",
-      "authors": { "lyrics": "Lorem Szerző", "music": "Ipsum Zeneszerző" },
-      "year": 1861,
-      "visibility": "GROUP",
-      "owner": "elod",
-      "tags": ["worship", "classic"],
-      "notes": "Baseline song: standard 4/4 hymn. Two arrangements (Standard in G, Acoustic in E) to test the arrangement switcher and key display on the song detail page.",
+      "title": "Amazing Grace",
+      "authors": {
+        "lyrics": "John Newton",
+        "music": "Traditional American melody"
+      },
+      "visibility": "group",
+      "language": "en",
+      "tags": ["worship", "hymn", "public-domain"],
       "arrangements": [
         {
           "title": "Standard (G)",
           "original_key": "G",
           "bpm": 92,
-          "time_signature": "4/4",
-          "default_sequence": ["V1", "C", "V1", "C"],
+          "default_sequence": ["V1", "V2", "V3"],
           "sections": [
             {
               "label": "V1",
-              "kind": "VERSE",
-              "content": "X:1\nT:Lorem Ipsum Dolor — Verse 1\nC:Ipsum Zeneszerző\nM:4/4\nL:1/8\nQ:1/4=92\nK:G\n\"G\"G2 A2 B2 c2 | \"C\"c2 B2 A2 G2 | \"Em\"B2 B2 \"C\"A2 A2 | \"D\"d2 B2 \"G\"A2 G2 |\nw: lo-rem ip-sum do-lor sit a-met con-sec-te-tur sed do ut\n\"G\"B2 B2 c2 d2 | \"Em\"e2 d2 c2 B2 | \"C\"A2 A2 \"D\"B2 B2 | \"G\"G2 G2 G2 G2 |]\nw: ei-us-mod tem-por in-ci-di-dunt ut la-bo-re et ma-gna"
+              "content": "X:1\nT:Amazing Grace — V1\nC:John Newton\nM:3/4\nL:1/8\nQ:1/4=92\nK:G\n\"G\"G2 G2 c2 | \"C\"c2 G2 G2 | \"D\"D2 B2 G2 | \"Em\"E2 D2 c2 | \"G\"B2 G2 |\nw: A-ma-zing grace how sweet the sound that saved a wretch like me"
             },
             {
-              "label": "C",
-              "kind": "CHORUS",
-              "content": "X:2\nT:Lorem Ipsum Dolor — Chorus\nC:Ipsum Zeneszerző\nM:4/4\nL:1/8\nQ:1/4=92\nK:G\n\"C\"c2 c2 c2 B2 | \"G\"B2 B2 B2 A2 | \"D\"A2 A2 B2 B2 | \"G\"G2 B2 d2 d2 |\nw: ma-gna a-li-qua ut e-nim ad mi-nim ve-ni-am quis ut\n\"C\"e2 d2 c2 B2 | \"G\"B2 A2 B2 G2 | \"D\"A2 B2 c2 B2 | \"G\"G2 G2 G2 G2 |]\nw: nos-trud ex-er-ci-ta-ti-on ul-lam-co la-bo-ris ni-si"
-            }
-          ]
-        },
-        {
-          "title": "Acoustic (E)",
-          "original_key": "E",
-          "bpm": 76,
-          "time_signature": "4/4",
-          "default_sequence": ["V1", "C"],
-          "sections": [
-            {
-              "label": "V1",
-              "kind": "VERSE",
-              "content": "X:1\nT:Lorem Ipsum Dolor — Verse 1 (Acoustic)\nC:Ipsum Zeneszerző\nM:4/4\nL:1/8\nQ:1/4=76\nK:E\n\"E\"E2 F2 G2 A2 | \"A\"A2 G2 \"E\"F2 E2 | \"B\"B2 c2 B2 A2 | \"E\"E2 G2 \"B\"B2 A2 |\nw: lo-rem ip-sum do-lor sit a-met con-sec-te-tur sed do ut\n\"A\"B2 B2 c2 B2 | \"C#m\"c2 B2 A2 G2 | \"B\"B2 A2 \"E\"G2 F2 | \"E\"E2 E2 E2 E2 |]\nw: ei-us-mod tem-por in-ci-di-dunt ut la-bo-re et ma-gna"
+              "label": "V2",
+              "content": "X:2\nT:Amazing Grace — V2\nC:John Newton\nM:3/4\nL:1/8\nQ:1/4=92\nK:G\n\"G\"G2 G2 c2 | \"C\"c2 G2 G2 | \"D\"D2 B2 G2 | \"Em\"E2 D2 c2 | \"G\"B2 G2 |\nw: I once was lost but now am found was blind but now I see"
             },
             {
-              "label": "C",
-              "kind": "CHORUS",
-              "content": "X:2\nT:Lorem Ipsum Dolor — Chorus (Acoustic)\nC:Ipsum Zeneszerző\nM:4/4\nL:1/8\nQ:1/4=76\nK:E\n\"E\"E2 G2 B2 c2 | \"A\"c2 B2 A2 G2 | \"B\"B2 B2 \"C#m\"c2 B2 | \"E\"B2 G2 \"B\"B2 A2 |\nw: ma-gna a-li-qua ut e-nim ad mi-nim ve-ni-am quis ut\n\"A\"A2 B2 c2 B2 | \"C#m\"c2 c2 B2 A2 | \"B\"B2 A2 \"E\"G2 F2 | \"E\"E2 E2 E2 E2 |]\nw: nos-trud ex-er-ci-ta-ti-on ul-lam-co la-bo-ris ni-si"
+              "label": "V3",
+              "content": "X:3\nT:Amazing Grace — V3\nC:John Newton\nM:3/4\nL:1/8\nQ:1/4=92\nK:G\n\"G\"G2 G2 c2 | \"C\"c2 G2 G2 | \"D\"D2 B2 G2 | \"Em\"E2 D2 c2 | \"G\"B2 G2 |\nw: 'Twas grace that taught my heart to fear my fears re-lieved by grace"
             }
           ]
         }
       ]
     },
     {
-      "title": "Lőrém Ípszűm Dőlőr",
-      "authors": { "lyrics": "Lőrém Szerző", "music": "Ípszűm Zeneszerző" },
-      "year": null,
-      "visibility": "GROUP",
-      "owner": "elod",
-      "tags": ["acoustic"],
-      "notes": "Edge-case song: accented Hungarian characters (ő, ű, á, é, í, ó, ö) in title, author and lyrics — tests search, sort and font rendering. Also 3/4 meter and a sharp chord (C#m) for key display.",
+      "title": "Joy to the World",
+      "authors": { "lyrics": "Isaac Watts", "music": "attr. G. F. Handel" },
+      "visibility": "group",
+      "language": "en",
+      "tags": ["worship", "hymn", "public-domain", "christmas"],
       "arrangements": [
         {
-          "title": "Acoustic (E)",
-          "original_key": "E",
-          "bpm": 78,
-          "time_signature": "3/4",
-          "default_sequence": ["V1", "C"],
+          "title": "Standard (G)",
+          "original_key": "G",
+          "bpm": 120,
+          "default_sequence": ["V1", "V2"],
           "sections": [
             {
               "label": "V1",
-              "kind": "VERSE",
-              "content": "X:1\nT:Lőrém Ípszűm Dőlőr — Verse 1\nC:Ípszűm Zeneszerző\nM:3/4\nL:1/8\nQ:1/4=78\nK:E\n\"E\"E2 F2 G2 | \"A\"A2 G2 F2 | \"B\"B2 c2 B2 | \"E\"E2 B2 G2 |\nw: lő-rém ip-szűm dő-lőr szit á-met sed dő űt\n\"A\"A2 B2 c2 | \"C#m\"c2 B2 A2 | \"B\"B2 A2 \"E\"G2 | \"E\"E2 E2 E2 |]\nw: á-lít tém-pőr ínc-cí-díd-dűnt űt lá-bő-ré"
+              "content": "X:1\nT:Joy to the World — V1\nC:Isaac Watts\nM:4/4\nL:1/8\nQ:1/4=120\nK:G\n\"G\"G2 G2 G2 G2 | \"C\"c2 c2 c2 B2 | \"D\"A2 A2 B2 c2 | \"G\"d2 G4 |\nw: Joy to the world the Lord is come let earth re-ceive her King"
             },
             {
-              "label": "C",
-              "kind": "CHORUS",
-              "content": "X:2\nT:Lőrém Ípszűm Dőlőr — Chorus\nC:Ípszűm Zeneszerző\nM:3/4\nL:1/8\nQ:1/4=78\nK:E\n\"E\"E2 G2 B2 | \"A\"c2 B2 A2 | \"B\"B2 B2 c2 | \"E\"B2 G2 E2 |\nw: mág-na á-lí-kva űt é-nim ád mí-nim kvis\n\"A\"A2 B2 c2 | \"C#m\"c2 B2 A2 | \"B\"B2 A2 \"E\"G2 | \"E\"E2 E2 E2 |]\nw: nős-trud égsz é-á kom-mó-dő kőn-szé-kvat szí"
+              "label": "V2",
+              "content": "X:2\nT:Joy to the World — V2\nC:Isaac Watts\nM:4/4\nL:1/8\nQ:1/4=120\nK:G\n\"G\"G2 G2 c2 | \"C\"c2 B2 G2 | \"D\"A2 G2 |\nw: Joy to the earth the Sa-vior reigns"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Doxology (Praise God from Whom All Blessings Flow)",
+      "authors": { "lyrics": "Thomas Ken", "music": "Traditional (OLD 100TH)" },
+      "visibility": "group",
+      "language": "en",
+      "tags": ["worship", "hymn", "public-domain", "doxology"],
+      "arrangements": [
+        {
+          "title": "Standard (D)",
+          "original_key": "D",
+          "bpm": 100,
+          "default_sequence": ["V1"],
+          "sections": [
+            {
+              "label": "V1",
+              "content": "X:1\nT:Doxology\nC:Thomas Ken\nM:4/4\nL:1/8\nQ:1/4=100\nK:D\n\"D\"D2 D2 F2 A2 | \"G\"A2 A2 G2 F2 | \"Bb\"E2 E2 D2 E2 | \"D\"D2 D2 D2 D2 |\nw: Praise God from whom all bless-ings flow praise Him all crea-tures here be-low"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "All Hail the Power of Jesus' Name",
+      "authors": { "lyrics": "Edward Perronet", "music": "John Rippon" },
+      "visibility": "group",
+      "language": "en",
+      "tags": ["worship", "hymn", "public-domain"],
+      "arrangements": [
+        {
+          "title": "Standard (D)",
+          "original_key": "D",
+          "bpm": 96,
+          "default_sequence": ["V1"],
+          "sections": [
+            {
+              "label": "V1",
+              "content": "X:1\nT:All Hail the Power — V1\nC:Edward Perronet\nM:4/4\nL:1/8\nQ:1/4=96\nK:D\n\"D\"D2 F2 A2 | \"Bb\"A2 G2 F2 | \"Gm\"G2 F2 E2 E2 | \"D\"D2 D2 D2 |\nw: All hail the pow-er of Je-sus' name let an-gels pros-trate fall"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Be Thou My Vision",
+      "authors": {
+        "lyrics": "Irish (8th c.), tr. Eleanor Hull",
+        "music": "Traditional Irish (SLANE)"
+      },
+      "visibility": "group",
+      "language": "en",
+      "tags": ["worship", "hymn", "public-domain"],
+      "arrangements": [
+        {
+          "title": "Standard (D)",
+          "original_key": "D",
+          "bpm": 88,
+          "default_sequence": ["V1"],
+          "sections": [
+            {
+              "label": "V1",
+              "content": "X:1\nT:Be Thou My Vision — V1\nC:Irish traditional\nM:3/4\nL:1/8\nQ:1/4=88\nK:D\n\"D\"D2 F2 A2 | \"G\"A2 G2 F2 | \"Em\"E2 D2 | \"D\"D4 |\nw: Be Thou my vi-sion O Lord of my heart"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "It Is Well With My Soul",
+      "authors": { "lyrics": "Horatio Spafford", "music": "Philip Bliss" },
+      "visibility": "group",
+      "language": "en",
+      "tags": ["worship", "hymn", "public-domain"],
+      "arrangements": [
+        {
+          "title": "Standard (G)",
+          "original_key": "G",
+          "bpm": 72,
+          "default_sequence": ["V1"],
+          "sections": [
+            {
+              "label": "V1",
+              "content": "X:1\nT:It Is Well — V1\nC:Horatio Spafford\nM:4/4\nL:1/8\nQ:1/4=72\nK:G\n\"G\"G2 G2 B2 d2 | \"C\"c2 B2 A2 | \"D\"G2 G2 | \"G\"G2 G4 |\nw: When peace like a ri-ver at-tend-eth my way"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "A Mighty Fortress Is Our God",
+      "authors": { "lyrics": "Martin Luther", "music": "Martin Luther" },
+      "visibility": "group",
+      "language": "en",
+      "tags": ["worship", "hymn", "public-domain", "reformation"],
+      "arrangements": [
+        {
+          "title": "Standard (A)",
+          "original_key": "A",
+          "bpm": 84,
+          "default_sequence": ["V1"],
+          "sections": [
+            {
+              "label": "V1",
+              "content": "X:1\nT:A Mighty Fortress — V1\nC:Martin Luther\nM:4/4\nL:1/8\nQ:1/4=84\nK:A\n\"A\"A2 A2 B2 c2 | \"D\"d2 c2 B2 A2 | \"E7\"B2 A2 B2 c2 | \"A\"A2 A2 A2 |\nw: A might-y for-tress is our God a bul-wark nev-er fail-ing"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "The Old Rugged Cross",
+      "authors": { "lyrics": "George Bennard", "music": "George Bennard" },
+      "visibility": "group",
+      "language": "en",
+      "tags": ["worship", "hymn", "public-domain"],
+      "arrangements": [
+        {
+          "title": "Standard (G)",
+          "original_key": "G",
+          "bpm": 72,
+          "default_sequence": ["V1"],
+          "sections": [
+            {
+              "label": "V1",
+              "content": "X:1\nT:The Old Rugged Cross — V1\nC:George Bennard\nM:4/4\nL:1/8\nQ:1/4=72\nK:G\n\"G\"G2 G2 G2 c2 | \"C\"c2 B2 A2 G2 | \"D\"G2 G2 G2 | \"G\"G4 |\nw: On a hill far a-way stood an old rug-ged cross"
             }
           ]
         }
