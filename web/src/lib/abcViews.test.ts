@@ -106,6 +106,18 @@ describe('chordChartLines', () => {
     ]);
   });
 
+  it('stops the line when the verse runs out of syllables (no bare chord rows)', () => {
+    // 2 music lines x 2 notes, but the verse covers only 2 syllables.
+    const verses = chordChartLines('"G"G2 A2 |\n"C"c2 B2 |\nw: a-ma');
+    expect(verses[0]).toEqual([
+      [
+        { chord: 'G', syllable: 'a', wordEnd: false },
+        { chord: null, syllable: 'ma', wordEnd: true },
+      ],
+      [], // second music line: no syllables left, nothing emitted
+    ]);
+  });
+
   it('renders a held note (w: "-") as an empty syllable that still shows its chord', () => {
     const verses = chordChartLines('"G"G2 A2 B2 |\nw: a - ma');
     expect(verses[0]?.[0]).toEqual([

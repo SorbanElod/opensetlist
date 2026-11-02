@@ -112,10 +112,13 @@ export function chordChartLines(abc: string): ChordChartItem[][][] {
           continue;
         }
         if (!/[A-Ga-gzZ]/.test(token)) continue; // bar lines, slurs, …
-        const s = stream[next++] ?? { syllable: null, wordEnd: false };
+        // Verse ran out of syllables: stop this line instead of emitting
+        // bare chord columns (the sheet view still shows everything).
+        if (next >= stream.length) break;
+        const s = stream[next++]!;
         items.push({
           chord: pendingChord,
-          syllable: s.syllable ?? '',
+          syllable: s.syllable ?? '', // "-"/"_" holds the previous syllable
           wordEnd: s.wordEnd,
         });
         pendingChord = null;

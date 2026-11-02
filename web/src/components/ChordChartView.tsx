@@ -28,7 +28,7 @@ export function ChordChartView({ abc }: { abc: string }) {
                 <span
                   key={itemIndex}
                   className={`inline-block align-bottom ${
-                    item.wordEnd ? 'mr-4' : ''
+                    item.wordEnd ? 'mr-2' : ''
                   }`}
                 >
                   {/* fixed-height chord row keeps syllable baselines aligned
