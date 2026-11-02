@@ -2,12 +2,24 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { count, eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { clearGroupLibrary, seedDev } from './seed-dev.js';
+import {
+  clearGroupLibrary,
+  DEV_ADMIN,
+  ensureDevAdmin,
+  seedDev,
+} from './seed-dev.js';
 import { importSongsSchema } from '../src/songs/schemas.js';
-import { arrangements, songs, tags } from '../src/db/schema.js';
+import { verifyPassword } from '../src/auth/service.js';
+import {
+  arrangements,
+  groupMembers,
+  songs,
+  tags,
+  users,
+} from '../src/db/schema.js';
 import { buildTestDb } from '../src/test-utils/db.js';
 import { getSingleGroupId } from '../src/songs/service.js';
 
@@ -21,7 +33,12 @@ describe('dev-seed fixture', () => {
     const raw = JSON.parse(await readFile(SEED_FILE, 'utf8')) as unknown;
     const data = importSongsSchema.parse(raw); // throws on a broken seed
 
-    expect(data.songs.length).toBeGreaterThanOrEqual(6);
+    expect(data.songs.length).toBeGreaterThanOrEqual(12);
+    // Multi-arrangement songs exercise the arrangement switcher.
+    expect(data.songs.some((s) => (s.arrangements?.length ?? 0) >= 2)).toBe(
+      true,
+    );
+    let instrumental = 0;
     for (const song of data.songs) {
       expect(song.title.trim().length).toBeGreaterThan(0);
       expect(song.arrangements?.length).toBeGreaterThanOrEqual(1);
@@ -31,14 +48,16 @@ describe('dev-seed fixture', () => {
           expect(arrangement.sections.map((s) => s.label)).toContain(entry);
         }
         for (const section of arrangement.sections) {
-          // Every section is renderable ABC with chords and lyrics, so all
-          // three views (#10) have something to show.
+          // Every section is renderable ABC with chords, so sheet and chords
+          // views (#10) have something to show; vocal sections add w: lyrics.
           expect(section.content).toContain('K:');
           expect(section.content).toMatch(/"[A-G]/); // quoted chord symbol
-          expect(section.content).toMatch(/^w:/m); // lyric line
+          if (!/^w:/m.test(section.content)) instrumental += 1;
         }
       }
     }
+    // At least one instrumental piece covers the no-lyrics path.
+    expect(instrumental).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -62,12 +81,59 @@ describe.skipIf(!dbUrl)('seedDev / clearGroupLibrary', () => {
     await close();
   });
 
-  it('wipes and re-imports the curated seed idempotently', async () => {
+  it('ensures the deterministic dev admin (group_manager, password admin)', async () => {
+    const adminId = await ensureDevAdmin(db);
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, DEV_ADMIN.email));
+    expect(user).toBeTruthy();
+    expect(user!.id).toBe(adminId);
+    expect(user!.name).toBe(DEV_ADMIN.name);
+    expect(await verifyPassword(DEV_ADMIN.password, user!.passwordHash!)).toBe(
+      true,
+    );
+
+    const groupId = await getSingleGroupId(db);
+    const [membership] = await db
+      .select()
+      .from(groupMembers)
+      .where(
+        and(
+          eq(groupMembers.groupId, groupId),
+          eq(groupMembers.userId, adminId),
+        ),
+      );
+    expect(membership?.role).toBe('group_manager');
+
+    // Idempotent: a second run keeps the same login working.
+    await ensureDevAdmin(db);
+    const [again] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, DEV_ADMIN.email));
+    expect(await verifyPassword(DEV_ADMIN.password, again!.passwordHash!)).toBe(
+      true,
+    );
+  });
+
+  it('wipes and re-imports the curated seed idempotently, owned by the admin', async () => {
     const groupId = await getSingleGroupId(db);
 
     const first = await seedDev(db);
-    expect(first.songs).toBeGreaterThanOrEqual(6);
-    expect(first.arrangements).toBeGreaterThanOrEqual(6);
+    expect(first.songs).toBeGreaterThanOrEqual(12);
+    expect(first.arrangements).toBeGreaterThanOrEqual(12);
+
+    const [admin] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, DEV_ADMIN.email));
+    const owned = await db
+      .select({ n: count() })
+      .from(songs)
+      .where(eq(songs.ownerId, admin!.id));
+    expect(owned[0]?.n).toBe(first.songs);
 
     const songCount = async () => {
       const rows = await db
