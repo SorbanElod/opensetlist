@@ -1,21 +1,17 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { ArrowLeft, Guitar, Mic, Music, Pencil } from 'lucide-react';
+import { ArrowLeft, Pencil } from 'lucide-react';
 
 import { ApiError } from '../api/client';
 import { getArrangement, type Arrangement } from '../api/arrangements';
 import { getSong, type Song } from '../api/songs';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
-import { AbcRenderer } from '../components/AbcRenderer';
-import { ChordChartView } from '../components/ChordChartView';
-import { lyricsText, orderedSections, type ViewMode } from '../lib/abcViews';
+import { ArrangementRenderer } from '../components/ArrangementRenderer';
 
-// On-stage view (issue #10): renders the arrangement's ABC sections in play
-// order in one of three views — sheet (full abcjs notation), chords (text
-// chord chart, no staff) or lyrics (words only). All three derive from the
-// same fetched ABC, so switching is local state only and costs no server
-// round-trip. The default view comes from the user's stored preference;
-// "Set as my default" persists the choice.
+// On-stage view (issue #10): the arrangement's sections rendered through the
+// shared ArrangementRenderer — the same pipeline the song detail page uses
+// inline (issue #51). This page keeps only its own chrome: header, back
+// link, edit.
 export function ArrangementViewPage() {
   const { id } = useParams<{ id: string }>();
   const auth = useAuth();
@@ -24,20 +20,6 @@ export function ArrangementViewPage() {
   const [song, setSong] = useState<Song | null>(null);
   const [arrangement, setArrangement] = useState<Arrangement | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const [view, setView] = useState<ViewMode>('sheet');
-  const viewInitialized = useRef(false);
-  const [savingDefault, setSavingDefault] = useState(false);
-
-  // Seed the view from the stored preference exactly once, when the session
-  // resolves — later changes to the preference (this page's own save) must
-  // not yank the view mid-song.
-  useEffect(() => {
-    if (auth.status === 'authenticated' && !viewInitialized.current) {
-      viewInitialized.current = true;
-      setView(auth.user.defaultView);
-    }
-  }, [auth]);
 
   // One fetch for the whole page: the arrangement carries every section's
   // ABC, so view switching never refetches.
@@ -66,51 +48,6 @@ export function ArrangementViewPage() {
 
   const canEdit =
     auth.status === 'authenticated' && canWrite(role, auth.user.isSuperadmin);
-  const isDefault =
-    auth.status === 'authenticated' && auth.user.defaultView === view;
-
-  async function onSaveDefault() {
-    setSavingDefault(true);
-    setError(null);
-    try {
-      await auth.setDefaultView(view);
-    } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : 'Could not save your default view. Please try again.',
-      );
-    } finally {
-      setSavingDefault(false);
-    }
-  }
-
-  const sections = arrangement
-    ? orderedSections(arrangement.sections, arrangement.defaultSequence)
-    : [];
-
-  const segmentClass = (active: boolean) =>
-    `flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-semibold transition-colors ${
-      active ? 'bg-raised text-text' : 'text-muted hover:text-text'
-    }`;
-
-  // The three views of one ABC source: sheet renders via abcjs, chords is a
-  // flowing HTML chord chart and lyrics plain text — both derived from the
-  // same ABC at render time (see lib/abcViews).
-  function renderSection(content: string) {
-    if (view === 'sheet') return <AbcRenderer abc={content} />;
-    if (view === 'chords') return <ChordChartView abc={content} />;
-    const text = lyricsText(content);
-    return text.trim() ? (
-      // Same typeface and size as the chords view's syllable row — only the
-      // chords are missing here. pre-wrap keeps the verse line breaks.
-      <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-text">
-        {text}
-      </p>
-    ) : (
-      <p className="hint">No lyrics (w: lines) in this section.</p>
-    );
-  }
 
   return (
     <div>
@@ -157,76 +94,10 @@ export function ArrangementViewPage() {
             )}
           </div>
 
-          {error && (
-            <div className="error-banner mt-3" role="alert">
-              {error}
-            </div>
-          )}
-
-          <div className="mb-4 mt-3 flex items-center gap-2">
-            <div
-              className="inline-flex rounded-lg border border-border bg-bg p-0.5"
-              role="group"
-              aria-label="View"
-            >
-              <button
-                type="button"
-                className={segmentClass(view === 'sheet')}
-                aria-pressed={view === 'sheet'}
-                onClick={() => setView('sheet')}
-              >
-                <Music size={14} /> Sheet
-              </button>
-              <button
-                type="button"
-                className={segmentClass(view === 'chords')}
-                aria-pressed={view === 'chords'}
-                onClick={() => setView('chords')}
-              >
-                <Guitar size={14} /> Chords
-              </button>
-              <button
-                type="button"
-                className={segmentClass(view === 'lyrics')}
-                aria-pressed={view === 'lyrics'}
-                onClick={() => setView('lyrics')}
-              >
-                <Mic size={14} /> Lyrics
-              </button>
-            </div>
-            {!isDefault && (
-              <button
-                type="button"
-                className="btn btn-outline"
-                onClick={onSaveDefault}
-                disabled={savingDefault}
-              >
-                {savingDefault ? 'Saving…' : 'Set as my default'}
-              </button>
-            )}
-          </div>
-
-          {sections.length === 0 && (
-            <p className="hint">
-              This arrangement has no sections yet — add ABC sections in the
-              editor.
-            </p>
-          )}
-
-          <div className="flex flex-col gap-3">
-            {sections.map((section, i) => (
-              <section
-                key={`${section.label}-${i}`}
-                className="card rounded-xl p-4"
-              >
-                <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-muted">
-                  {section.label}
-                </h2>
-                {/* All views derive from the same stored ABC at render
-                    time — nothing derived is persisted. */}
-                {renderSection(section.content)}
-              </section>
-            ))}
+          {/* View toggle + sections in play order: the one render pipeline
+              shared with the song detail page (issue #51). */}
+          <div className="mt-3">
+            <ArrangementRenderer arrangement={arrangement} />
           </div>
         </div>
       )}
