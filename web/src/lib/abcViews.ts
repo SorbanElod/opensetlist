@@ -45,6 +45,19 @@ export function orderedSections(
 // directives and % comments.
 const NON_MUSIC_LINE = /^([A-Za-z][A-Za-z0-9_]*:|%%|%)/;
 
+// abcjs's chord grid (chordGrid: 'noMusic') throws on any meter other than
+// 4/4 and 2/2 ("notCommonTime" — the grid is one cell per measure beat).
+// C: is common time (4/4), C| is cut time (2/2), no M: line means 4/4.
+// We check the FIRST M: line only; mid-tune meter changes are rare in
+// songbook ABC and the worst case is the text fallback below.
+export function supportsChordGrid(abc: string): boolean {
+  const m = abc.match(/^M:\s*(\S+)/m);
+  if (!m) return true;
+  const meter = m[1]!;
+  if (meter === 'C' || meter === 'C|') return true;
+  return meter === '4/4' || meter === '2/2';
+}
+
 // Syllables of one w: lyric line, in note order. ABC lyric rules we handle:
 // words are space-separated, syllables of one word are hyphen-joined
 // ("lo-rem" = lo + rem on two notes), a standalone "-" skips a note (the

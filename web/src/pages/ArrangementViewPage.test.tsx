@@ -117,17 +117,71 @@ describe('ArrangementViewPage', () => {
     ).toBe('true');
   });
 
-  it('chords view shows the text chord chart (chords over syllables, no staff, no quotes)', async () => {
+  it("chords view renders abcjs's SVG chord grid (no staff) for 4/4 sections", async () => {
     stubApi('chords');
     renderApp('/arrangements/a1');
 
-    // Default preference chords: no abcjs render at all.
     await screen.findAllByRole('heading', { level: 2 });
-    expect(vi.mocked(renderAbc).mock.calls).toHaveLength(0);
-    // V1 is sequenced twice, so its chart renders twice.
-    expect((await screen.findAllByText(/G a ma C zing grace/)).length).toBe(2);
-    expect(screen.getByText(/D how sweet/)).toBeTruthy();
-    expect(screen.queryByText(/"G"/)).toBeNull();
+    // renderAbc fires in a setTimeout(0), so wait for the calls to land.
+    await waitFor(() => {
+      expect(vi.mocked(renderAbc).mock.calls.length).toBe(3); // V1, C1, V1
+    });
+    // Each section renders with the chord grid, not the staff.
+    for (const call of vi.mocked(renderAbc).mock.calls) {
+      expect(call[2]).toMatchObject({ chordGrid: 'noMusic' });
+    }
+    const abcs = vi.mocked(renderAbc).mock.calls.map((c) => String(c[1]));
+    expect(abcs).toEqual([V1_ABC, C1_ABC, V1_ABC]);
+    expect(
+      screen
+        .getByRole('button', { name: /chords/i })
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('chords view falls back to the text chart for meters the grid cannot handle (3/4)', async () => {
+    const fn = stubFetch((path) => {
+      if (path === '/api/auth/me')
+        return {
+          status: 200,
+          body: {
+            user: { ...USER, defaultView: 'chords' as DefaultView },
+            memberships: [{ groupId: 'g1', role: 'member' }],
+          },
+        };
+      if (path === '/api/arrangements/a1')
+        return {
+          status: 200,
+          body: {
+            arrangement: {
+              ...ARRANGEMENT,
+              sections: [
+                {
+                  label: 'V1',
+                  content: 'X:1\nM:3/4\nK:G\n"G"G2 A2 B2 |\nw: a-ma-zing',
+                },
+              ],
+              defaultSequence: ['V1'],
+            },
+          },
+        };
+      if (path === '/api/songs/s1')
+        return { status: 200, body: { song: SONG } };
+      return { status: 404, body: {} };
+    });
+    renderApp('/arrangements/a1');
+
+    // Text fallback shown, and abcjs is never asked for the grid.
+    expect(await screen.findByText(/G a ma zing/)).toBeTruthy();
+    await screen.findAllByRole('heading', { level: 2 });
+    expect(
+      vi
+        .mocked(renderAbc)
+        .mock.calls.filter((c) => c[2]?.chordGrid === 'noMusic'),
+    ).toHaveLength(0);
+    expect(
+      fn.mock.calls.filter(([p]) => String(p) === '/api/arrangements/a1'),
+    ).toHaveLength(1);
   });
 
   it('lyrics view shows words only — no chord symbols, no abcjs render', async () => {
@@ -151,9 +205,15 @@ describe('ArrangementViewPage', () => {
         .length;
     expect(arrangementCalls()).toBe(1);
 
-    // sheet -> chords: text chart appears, still one fetch.
+    // sheet -> chords: the SVG chord grid renders, still one fetch.
     fireEvent.click(screen.getByRole('button', { name: /chords/i }));
-    expect((await screen.findAllByText(/G a ma C zing grace/)).length).toBe(2);
+    await waitFor(() => {
+      expect(
+        vi
+          .mocked(renderAbc)
+          .mock.calls.some((c) => c[2]?.chordGrid === 'noMusic'),
+      ).toBe(true);
+    });
     expect(arrangementCalls()).toBe(1);
 
     // chords -> lyrics: words only.

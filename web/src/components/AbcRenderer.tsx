@@ -13,9 +13,13 @@ import { renderAbc } from 'abcjs';
 export function AbcRenderer({
   abc,
   debounceMs = 0,
+  chordGrid,
 }: {
   abc: string;
   debounceMs?: number;
+  // 'noMusic' renders abcjs's chord grid (chord cells + lyric lines, no
+  // staff) instead of notation — the chords view (issue #10).
+  chordGrid?: 'noMusic' | 'withMusic';
 }) {
   const targetRef = useRef<HTMLDivElement>(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -33,7 +37,7 @@ export function AbcRenderer({
       try {
         // responsive: 'resize' fits the staff to the container width — the
         // primary device is a phone on stage, so notation must not overflow.
-        renderAbc(target, abc, { responsive: 'resize' });
+        renderAbc(target, abc, { responsive: 'resize', chordGrid });
         setWarning(null);
       } catch {
         target.innerHTML = '';
@@ -42,7 +46,7 @@ export function AbcRenderer({
     }, debounceMs);
 
     return () => clearTimeout(handle);
-  }, [abc, debounceMs]);
+  }, [abc, debounceMs, chordGrid]);
 
   return (
     <div>

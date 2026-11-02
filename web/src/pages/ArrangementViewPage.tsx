@@ -11,6 +11,7 @@ import {
   chordChartText,
   lyricsText,
   orderedSections,
+  supportsChordGrid,
   type ViewMode,
 } from '../lib/abcViews';
 
@@ -98,25 +99,31 @@ export function ArrangementViewPage() {
       active ? 'bg-raised text-text' : 'text-muted hover:text-text'
     }`;
 
-  // The three views of one ABC source: sheet renders via abcjs, chords and
-  // lyrics are plain-text derivations (no staff) — see lib/abcViews.
+  // The three views of one ABC source: sheet and chords render via abcjs
+  // (chords as its SVG chord grid, no staff — with a text fallback for
+  // meters the grid can't handle), lyrics is a plain-text derivation.
   function renderSection(content: string) {
     if (view === 'sheet') return <AbcRenderer abc={content} />;
-    const text =
-      view === 'chords' ? chordChartText(content) : lyricsText(content);
-    if (!text.trim()) {
-      return (
-        <p className="hint">
-          {view === 'chords'
-            ? 'No chord symbols in this section.'
-            : 'No lyrics (w: lines) in this section.'}
-        </p>
+    if (view === 'chords') {
+      if (supportsChordGrid(content)) {
+        return <AbcRenderer abc={content} chordGrid="noMusic" />;
+      }
+      const chart = chordChartText(content);
+      return chart.trim() ? (
+        <pre className="whitespace-pre-wrap break-words font-mono text-[14px] leading-relaxed text-text">
+          {chart}
+        </pre>
+      ) : (
+        <p className="hint">No chord symbols in this section.</p>
       );
     }
-    return (
+    const text = lyricsText(content);
+    return text.trim() ? (
       <pre className="whitespace-pre-wrap break-words font-mono text-[14px] leading-relaxed text-text">
         {text}
       </pre>
+    ) : (
+      <p className="hint">No lyrics (w: lines) in this section.</p>
     );
   }
 
