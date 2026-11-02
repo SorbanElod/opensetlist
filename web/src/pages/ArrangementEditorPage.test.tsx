@@ -13,6 +13,7 @@ const USER = {
   email: 'elod@example.com',
   name: 'Előd',
   isSuperadmin: false,
+  defaultView: 'chords',
 };
 
 const SONG = {

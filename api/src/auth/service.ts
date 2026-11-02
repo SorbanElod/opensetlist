@@ -2,7 +2,13 @@ import { hash, verify } from '@node-rs/argon2';
 import { createHash, randomBytes } from 'node:crypto';
 import { and, eq, gt, lt } from 'drizzle-orm';
 
-import { groupMembers, groups, sessions, users } from '../db/schema.js';
+import {
+  defaultView,
+  groupMembers,
+  groups,
+  sessions,
+  users,
+} from '../db/schema.js';
 import type { Db } from '../db/index.js';
 import type { RegisterInput } from './schemas.js';
 
@@ -18,11 +24,17 @@ export const SESSION_TTL_DAYS = 30;
 // registration.
 const SINGLE_GROUP_NAME = 'Main Group';
 
+// The rendering view the user's role maps to by default (issue #10):
+// guitarists get 'chords', singers 'lyrics' — stored per user so the
+// on-stage view follows them across devices.
+export type DefaultView = (typeof defaultView.enumValues)[number];
+
 export type PublicUser = {
   id: string;
   email: string;
   name: string;
   isSuperadmin: boolean;
+  defaultView: DefaultView;
 };
 
 export function hashPassword(password: string): Promise<string> {
@@ -98,6 +110,7 @@ export async function getUserBySessionToken(
       email: users.email,
       name: users.name,
       isSuperadmin: users.isSuperadmin,
+      defaultView: users.defaultView,
     })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
@@ -158,6 +171,7 @@ export async function registerUser(
       email: user!.email,
       name: user!.name,
       isSuperadmin: user!.isSuperadmin,
+      defaultView: user!.defaultView,
     };
   });
 }
@@ -183,5 +197,29 @@ export async function authenticateUser(
     email: user.email,
     name: user.name,
     isSuperadmin: user.isSuperadmin,
+    defaultView: user.defaultView,
   };
+}
+
+// Self-service profile update: the only user-writable field in the MVP is
+// default_view (the on-stage rendering preference). Returns the fresh
+// PublicUser, or null when the user no longer exists.
+export async function updateDefaultView(
+  db: Db,
+  userId: string,
+  view: DefaultView,
+): Promise<PublicUser | null> {
+  const [row] = await db
+    .update(users)
+    .set({ defaultView: view })
+    .where(eq(users.id, userId))
+    .returning({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      isSuperadmin: users.isSuperadmin,
+      defaultView: users.defaultView,
+    });
+
+  return row ?? null;
 }

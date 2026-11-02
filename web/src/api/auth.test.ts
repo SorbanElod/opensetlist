@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { getMe, login, register, validateRegister } from './auth';
+import { getMe, login, register, updateMe, validateRegister } from './auth';
 import { stubFetch } from '../test/fetchMock';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -47,7 +47,13 @@ describe('validateRegister', () => {
 });
 
 describe('auth endpoints', () => {
-  const user = { id: 'u1', email: 'e@x.hu', name: 'E', isSuperadmin: false };
+  const user = {
+    id: 'u1',
+    email: 'e@x.hu',
+    name: 'E',
+    isSuperadmin: false,
+    defaultView: 'chords',
+  } as const;
 
   it('login posts credentials to /api/auth/login and returns the user', async () => {
     const fn = stubFetch((path) =>
@@ -98,5 +104,21 @@ describe('auth endpoints', () => {
     const [path, init] = fn.mock.calls[0]!;
     expect(String(path)).toBe('/api/auth/me');
     expect(init?.method).toBe('GET');
+  });
+
+  it('updateMe PATCHes the default view to /api/auth/me', async () => {
+    const fn = stubFetch((path) =>
+      path === '/api/auth/me'
+        ? { status: 200, body: { user: { ...user, defaultView: 'lyrics' } } }
+        : { status: 404, body: {} },
+    );
+
+    const result = await updateMe({ defaultView: 'lyrics' });
+
+    expect(result.user.defaultView).toBe('lyrics');
+    const [path, init] = fn.mock.calls[0]!;
+    expect(String(path)).toBe('/api/auth/me');
+    expect(init?.method).toBe('PATCH');
+    expect(JSON.parse(String(init?.body))).toEqual({ defaultView: 'lyrics' });
   });
 });

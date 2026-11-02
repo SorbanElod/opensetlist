@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
-import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Pencil, Play, Plus, Trash2 } from 'lucide-react';
 
 import { ApiError } from '../api/client';
 import { listArrangements, type Arrangement } from '../api/arrangements';
@@ -182,6 +182,15 @@ export function SongDetailPage() {
                       {a.sections.length === 1 ? '' : 's'}
                     </p>
                   </div>
+                  {/* View is the on-stage page (issue #10) — every role,
+                      readers included, can open it. */}
+                  <Link
+                    to={`/arrangements/${a.id}`}
+                    className="btn btn-outline shrink-0"
+                    aria-label={`View ${a.title}`}
+                  >
+                    <Play size={14} /> View
+                  </Link>
                   {canEdit && (
                     <Link
                       to={`/arrangements/${a.id}/edit`}

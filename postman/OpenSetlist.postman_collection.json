@@ -199,7 +199,67 @@
                   "value": "application/json; charset=utf-8"
                 }
               ],
-              "body": "{\n  \"user\": {\n    \"id\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n    \"email\": \"elod@example.com\",\n    \"name\": \"Elod\",\n    \"isSuperadmin\": false\n  },\n  \"memberships\": [\n    {\n      \"groupId\": \"9a8b7c6d-3333-4ddd-8eee-000000000001\",\n      \"role\": \"group_manager\"\n    }\n  ]\n}"
+              "body": "{\n  \"user\": {\n    \"id\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n    \"email\": \"elod@example.com\",\n    \"name\": \"Elod\",\n    \"isSuperadmin\": false,\n    \"defaultView\": \"chords\"\n  },\n  \"memberships\": [\n    {\n      \"groupId\": \"9a8b7c6d-3333-4ddd-8eee-000000000001\",\n      \"role\": \"group_manager\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "401 Not authenticated",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Not authenticated\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update me (default view)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"defaultView\": \"lyrics\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
+            },
+            "description": "Self-service profile update (#10): sets the caller's default on-stage view — sheet (full notation), chords (chord chart, no staff) or lyrics (words only). 200 returns the fresh user; 400 on an unknown value; 401 without a session."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"user\": {\n    \"id\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n    \"email\": \"elod@example.com\",\n    \"name\": \"Elod\",\n    \"isSuperadmin\": false,\n    \"defaultView\": \"lyrics\"\n  },\n  \"memberships\": [\n    {\n      \"groupId\": \"9a8b7c6d-3333-4ddd-8eee-000000000001\",\n      \"role\": \"group_manager\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "400 Invalid input",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Invalid input\",\n  \"issues\": [\n    {\n      \"path\": \"defaultView\",\n      \"message\": \"Invalid option\"\n    }\n  ]\n}"
             },
             {
               "name": "401 Not authenticated",

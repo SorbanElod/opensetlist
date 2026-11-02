@@ -22,6 +22,20 @@
       "when": 1793465678160,
       "tag": "0002_chilly_leper_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793554137591,
+      "tag": "0003_lucky_lord_tyger",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793555944558,
+      "tag": "0004_adorable_norrin_radd",
+      "breakpoints": true
     }
   ]
 }
