@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { lyricsText, orderedSections } from './abcViews';
+import { chordChartLines, lyricsText, orderedSections } from './abcViews';
 import type { ArrangementSection } from '../api/arrangements';
 
 const sections: ArrangementSection[] = [
@@ -81,5 +81,50 @@ describe('lyricsText', () => {
 
   it('returns an empty string when there are no w: lines', () => {
     expect(lyricsText('X:1\nK:G\nG2 A2 |')).toBe('');
+  });
+});
+
+describe('chordChartLines', () => {
+  it('maps chords inline onto the syllable of the note they sit on, words marked', () => {
+    // 4 notes; verse syllables a,ma,zing (one word) + grace (one word).
+    const verses = chordChartLines(ABC);
+    expect(verses).toHaveLength(2); // two w: verses
+    expect(verses[0]).toEqual([
+      [
+        { chord: 'G', syllable: 'a', wordEnd: false },
+        { chord: null, syllable: 'ma', wordEnd: false },
+        { chord: 'C', syllable: 'zing', wordEnd: true },
+        { chord: null, syllable: 'grace', wordEnd: true },
+      ],
+    ]);
+    // Second verse aligns with the same music lines.
+    expect(verses[1]?.[0]?.map((i) => i.syllable)).toEqual([
+      'i',
+      'once',
+      'was',
+      'lost',
+    ]);
+  });
+
+  it('renders a held note (w: "-") as an empty syllable that still shows its chord', () => {
+    const verses = chordChartLines('"G"G2 A2 B2 |\nw: a - ma');
+    expect(verses[0]?.[0]).toEqual([
+      { chord: 'G', syllable: 'a', wordEnd: true },
+      { chord: null, syllable: '', wordEnd: false },
+      { chord: null, syllable: 'ma', wordEnd: true },
+    ]);
+  });
+
+  it('falls back to bare chord symbols per music line when there are no lyrics', () => {
+    const verses = chordChartLines('X:1\nK:G\n"G"G2 A2 | "C"c2 |\n"D"d2 |');
+    expect(verses).toEqual([
+      [
+        [
+          { chord: 'G', syllable: '', wordEnd: true },
+          { chord: 'C', syllable: '', wordEnd: true },
+        ],
+        [{ chord: 'D', syllable: '', wordEnd: true }],
+      ],
+    ]);
   });
 });

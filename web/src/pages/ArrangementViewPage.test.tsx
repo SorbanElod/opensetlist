@@ -117,23 +117,23 @@ describe('ArrangementViewPage', () => {
     ).toBe('true');
   });
 
-  it('chords view is the abcjs render with notation hidden (add_classes + .chord-chart), any meter', async () => {
+  it('chords view is a flowing HTML chord chart — inline chords, joined words, no abcjs', async () => {
     stubApi('chords');
     renderApp('/arrangements/a1');
 
     await screen.findAllByRole('heading', { level: 2 });
-    // renderAbc fires in a setTimeout(0), so wait for the calls to land.
-    await waitFor(() => {
-      expect(vi.mocked(renderAbc).mock.calls.length).toBe(3); // V1, C1, V1
-    });
-    // Raw ABC through abcjs with add_classes — the .chord-chart CSS then
-    // hides everything except the chord/lyric text (no staff, no grid).
-    for (const call of vi.mocked(renderAbc).mock.calls) {
-      expect(call[2]).toMatchObject({ add_classes: true });
-    }
-    const abcs = vi.mocked(renderAbc).mock.calls.map((c) => String(c[1]));
-    expect(abcs).toEqual([V1_ABC, C1_ABC, V1_ABC]);
-    expect(document.querySelectorAll('.chord-chart')).toHaveLength(3);
+    // No abcjs render in this view at all.
+    expect(vi.mocked(renderAbc).mock.calls).toHaveLength(0);
+    // Chord names render inline as accent spans, in section order V1, C1, V1.
+    const chords = [...document.querySelectorAll('.text-accent')].map(
+      (el) => el.textContent,
+    );
+    expect(chords).toEqual(['G', 'C', 'D', 'G', 'C']);
+    // Syllables join into words with the chord right before them:
+    // V1 -> "G" + "amazing" (with C before "zing"), then "grace".
+    expect(screen.getAllByText('zing')).toHaveLength(2); // V1 twice
+    expect(screen.getAllByText('grace')).toHaveLength(2);
+    expect(screen.getByText('sweet')).toBeTruthy();
     expect(
       screen
         .getByRole('button', { name: /chords/i })
@@ -162,12 +162,12 @@ describe('ArrangementViewPage', () => {
         .length;
     expect(arrangementCalls()).toBe(1);
 
-    // sheet -> chords: same abcjs render, notation hidden via CSS class.
+    // sheet -> chords: inline chord chart appears, still one fetch.
     fireEvent.click(screen.getByRole('button', { name: /chords/i }));
     await waitFor(() => {
-      expect(
-        vi.mocked(renderAbc).mock.calls.some((c) => c[2]?.add_classes === true),
-      ).toBe(true);
+      expect(document.querySelectorAll('.text-accent').length).toBeGreaterThan(
+        0,
+      );
     });
     expect(arrangementCalls()).toBe(1);
 

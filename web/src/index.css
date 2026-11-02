@@ -193,33 +193,3 @@ body {
     font-size: 16px;
   }
 }
-
-/* Chords view (issue #10): the abcjs render with the sheet hidden. abcjs
-   draws chords and lyrics as positioned SVG <text> (abcjs-chord /
-   abcjs-lyric, enabled via add_classes); every non-text element is hidden,
-   so what remains is abcjs's own chord-over-lyric alignment without the
-   staff. Title/meta texts are hidden too — the section label is the h2. */
-.chord-chart
-  svg
-  :is(g, path, line, rect, circle, ellipse, polygon, polyline, use) {
-  visibility: hidden;
-}
-
-.chord-chart svg text {
-  visibility: visible;
-}
-
-.chord-chart
-  svg
-  text:is(.abcjs-title, .abcjs-meta-top, .abcjs-tempo, .abcjs-subtitle) {
-  visibility: hidden;
-}
-
-/* Pull the lyric row up under the chord row: with the staff gone, abcjs's
-   default chord-baseline to lyric-baseline distance (~84 user units at the
-   default scale) would leave a staff-sized gap. -68 puts the lyrics ~16
-   units under the chords. Tuned against abcjs 6 defaults; if abcjs changes
-   its spacing, adjust here. */
-.chord-chart svg text.abcjs-lyric {
-  transform: translateY(-68px);
-}

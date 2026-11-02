@@ -7,6 +7,7 @@ import { getArrangement, type Arrangement } from '../api/arrangements';
 import { getSong, type Song } from '../api/songs';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 import { AbcRenderer } from '../components/AbcRenderer';
+import { ChordChartView } from '../components/ChordChartView';
 import { lyricsText, orderedSections, type ViewMode } from '../lib/abcViews';
 
 // On-stage view (issue #10): renders the arrangement's ABC sections in play
@@ -93,14 +94,12 @@ export function ArrangementViewPage() {
       active ? 'bg-raised text-text' : 'text-muted hover:text-text'
     }`;
 
-  // The three views of one ABC source: sheet and chords both render via
-  // abcjs (chords = the same render with the notation hidden by CSS, see
-  // .chord-chart in index.css — just lyrics and chords, no sheet), lyrics
-  // is a plain-text derivation of the w: lines.
+  // The three views of one ABC source: sheet renders via abcjs, chords is a
+  // flowing HTML chord chart and lyrics plain text — both derived from the
+  // same ABC at render time (see lib/abcViews).
   function renderSection(content: string) {
     if (view === 'sheet') return <AbcRenderer abc={content} />;
-    if (view === 'chords')
-      return <AbcRenderer abc={content} variant="chords" />;
+    if (view === 'chords') return <ChordChartView abc={content} />;
     const text = lyricsText(content);
     return text.trim() ? (
       <pre className="whitespace-pre-wrap break-words font-mono text-[14px] leading-relaxed text-text">

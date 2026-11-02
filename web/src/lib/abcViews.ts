@@ -3,9 +3,9 @@ import type { ArrangementSection } from '../api/arrangements';
 // The three on-stage views (issue #10). All derive from the SAME stored ABC
 // text at render time — nothing derived is ever persisted:
 //   'sheet'  — full abcjs render (staff notation + chords + lyrics)
-//   'chords' — the same abcjs render with the notation hidden by CSS, so
-//              only the chord names and lyrics remain (see .chord-chart in
-//              index.css)
+//   'chords' — chord chart as flowing HTML: chord names inline in the lyric
+//              flow, right before the syllable they sit on (Ultimate
+//              Guitar style), words joined — see chordChartLines
 //   'lyrics' — lyric words only, as plain text (lyricsText below)
 export type ViewMode = 'sheet' | 'chords' | 'lyrics';
 
@@ -40,6 +40,89 @@ export function orderedSections(
   }
 
   return ordered;
+}
+
+// Lines that carry no music: ABC header fields (X:, T:, M:, K:, …), %%…
+// directives and % comments.
+const NON_MUSIC_LINE = /^([A-Za-z][A-Za-z0-9_]*:|%%|%)/;
+
+// One item of the chord chart: a lyric syllable and the chord name sitting
+// on its note (null when the note has no chord). wordEnd marks the last
+// syllable of a word, so the renderer can put a space after it.
+export type ChordChartItem = {
+  chord: string | null;
+  syllable: string;
+  wordEnd: boolean;
+};
+
+// The chord chart as structured items: per verse (w: line), per music line,
+// the syllables with their chords — the same alignment abcjs would draw, but
+// as flowing text (abcjs itself can only place them at fixed note
+// positions, which reads like a dump). Quoted "..." tokens on music lines
+// are chord names; any other token containing a pitch letter (A-G, a-g) or a
+// rest (z/Z) counts as one note and consumes one syllable. A "-"/"_" in the
+// w: line holds the previous syllable over that note (rendered empty).
+// Worst case for exotic notation (grace notes, slurs) is a shifted word,
+// never a crash — the sheet view remains the authoritative render.
+export function chordChartLines(abc: string): ChordChartItem[][][] {
+  const lines = abc.split('\n');
+  const musicLines = lines.filter(
+    (line) => line.trim() !== '' && !NON_MUSIC_LINE.test(line),
+  );
+  const wLines = lines.filter((line) => /^w:/.test(line));
+
+  // Syllable stream per verse, with word-end markers: words are
+  // space-separated in w:, syllables of one word are hyphen-joined
+  // ("lo-rem" = lo + rem on two notes).
+  const verses = wLines.map((w) => {
+    const stream: { syllable: string | null; wordEnd: boolean }[] = [];
+    for (const token of w.slice(2).trim().split(/\s+/)) {
+      if (!token || token === '-' || token === '_') {
+        stream.push({ syllable: null, wordEnd: false });
+        continue;
+      }
+      const parts = token.split('-').filter(Boolean);
+      parts.forEach((part, i) =>
+        stream.push({ syllable: part, wordEnd: i === parts.length - 1 }),
+      );
+    }
+    return stream;
+  });
+
+  // No lyrics: just the chord symbols per music line.
+  if (verses.length === 0) {
+    return [
+      musicLines.map((line) =>
+        (line.match(/"[^"]*"|\S+/g) ?? [])
+          .filter((t) => /^"/.test(t))
+          .map((t) => ({ chord: t.slice(1, -1), syllable: '', wordEnd: true })),
+      ),
+    ];
+  }
+
+  return verses.map((stream) => {
+    let next = 0;
+    return musicLines.map((line) => {
+      const tokens = line.match(/"[^"]*"|\S+/g) ?? [];
+      const items: ChordChartItem[] = [];
+      let pendingChord: string | null = null;
+      for (const token of tokens) {
+        if (/^"/.test(token)) {
+          pendingChord = token.slice(1, -1);
+          continue;
+        }
+        if (!/[A-Ga-gzZ]/.test(token)) continue; // bar lines, slurs, …
+        const s = stream[next++] ?? { syllable: null, wordEnd: false };
+        items.push({
+          chord: pendingChord,
+          syllable: s.syllable ?? '',
+          wordEnd: s.wordEnd,
+        });
+        pendingChord = null;
+      }
+      return items;
+    });
+  });
 }
 
 // Lyrics-only text: the w: lines with syllable hyphens joined back into
