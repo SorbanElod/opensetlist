@@ -125,10 +125,18 @@ describe('ArrangementViewPage', () => {
     // No abcjs render in this view at all.
     expect(vi.mocked(renderAbc).mock.calls).toHaveLength(0);
     // Chord names render inline as accent spans, in section order V1, C1, V1.
-    const chords = [...document.querySelectorAll('.text-accent')].map(
-      (el) => el.textContent,
-    );
+    const chords = [...document.querySelectorAll('.text-accent')]
+      .map((el) => el.textContent)
+      .filter(Boolean); // chord row renders empty when a note has no chord
     expect(chords).toEqual(['G', 'C', 'D', 'G', 'C']);
+    // Each chord is stacked above its syllable: a block element heading an
+    // inline-block column whose second row is the syllable.
+    const firstColumn = document.querySelector('.text-accent')?.parentElement;
+    expect(firstColumn?.className).toContain('inline-block');
+    expect(document.querySelector('.text-accent')?.className).toContain(
+      'block',
+    );
+    expect(firstColumn?.lastElementChild?.textContent).toBe('a');
     // Syllables join into words with the chord right before them:
     // V1 -> "G" + "amazing" (with C before "zing"), then "grace".
     expect(screen.getAllByText('zing')).toHaveLength(2); // V1 twice
