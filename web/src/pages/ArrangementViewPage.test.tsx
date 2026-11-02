@@ -245,6 +245,42 @@ describe('ArrangementViewPage', () => {
     expect(rendered).toContain('w: a-ma-zing grace');
   });
 
+  it('zooms the text views with the + / - controls, bounded at 50%–150%', async () => {
+    stubApi('lyrics');
+    renderApp('/arrangements/a1');
+
+    // one zoom wrapper around all sections (also scales row spacing)
+    const scaled = await screen.findByTestId('scaled-content');
+    expect(scaled.getAttribute('style')).toMatch(/zoom:\s*1(;|$)/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    expect(scaled.getAttribute('style')).toContain('zoom: 1.1');
+
+    // out six times from 1.1 down to 0.5 (the floor) — further clicks are
+    // disabled
+    const out = screen.getByRole('button', { name: 'Zoom out' });
+    for (let i = 0; i < 6; i++) fireEvent.click(out);
+    expect(scaled.getAttribute('style')).toContain('zoom: 0.5');
+    expect(out).toHaveProperty('disabled', true);
+    fireEvent.click(out);
+    expect(scaled.getAttribute('style')).toContain('zoom: 0.5');
+  });
+
+  it('hides the zoom control in sheet view (scaling the staff is a follow-up issue)', async () => {
+    stubApi('sheet');
+    renderApp('/arrangements/a1');
+
+    await waitFor(() => {
+      expect(vi.mocked(renderAbc).mock.calls.length).toBeGreaterThan(0);
+    });
+    expect(screen.queryByRole('button', { name: 'Zoom in' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Zoom out' })).toBeNull();
+
+    // but it is available in the text views
+    fireEvent.click(screen.getByRole('button', { name: /lyrics/i }));
+    expect(await screen.findByRole('button', { name: 'Zoom in' })).toBeTruthy();
+  });
+
   it('offers "Set as my default" when the view differs, and PATCHes /api/auth/me', async () => {
     const fn = stubApi('sheet');
     renderApp('/arrangements/a1');
