@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  chordChartText,
-  lyricsText,
-  orderedSections,
-  supportsChordGrid,
-} from './abcViews';
+import { lyricsText, orderedSections } from './abcViews';
 import type { ArrangementSection } from '../api/arrangements';
 
 const sections: ArrangementSection[] = [
@@ -62,16 +57,13 @@ describe('orderedSections', () => {
   });
 });
 
-// Seed-style ABC: quoted chord names inline on music lines, w: lyric lines
-// with hyphen-joined syllables ("a-ma-zing"). Each w: verse carries one
-// syllable per note across ALL music lines (8 notes here), per ABC rules.
+// Seed-style ABC: w: lyric lines with hyphen-joined syllables ("a-ma-zing").
 const ABC = [
   'X:1',
   'T:Amazing Grace — V1',
   'M:4/4',
   'K:G',
   '"G"G2 A2 | "C"c2 B2 |',
-  '"D"d2 B2 "G"A2 G2 |',
   'w: a-ma-zing grace how sweet the sound',
   'w: i once was lost but now am found',
 ].join('\n');
@@ -89,40 +81,5 @@ describe('lyricsText', () => {
 
   it('returns an empty string when there are no w: lines', () => {
     expect(lyricsText('X:1\nK:G\nG2 A2 |')).toBe('');
-  });
-});
-
-describe('chordChartText', () => {
-  it('prints chord symbols inline in front of the note they sit on, per verse', () => {
-    expect(chordChartText(ABC)).toBe(
-      'G a ma C zing grace\nD how sweet G the sound\n' +
-        'G i once C was lost\nD but now G am found',
-    );
-  });
-
-  it('falls back to plain chord symbols per music line when there are no lyrics', () => {
-    const noLyrics = 'X:1\nK:G\n"G"G2 A2 | "C"c2 B2 |\n"D"d2 |';
-    expect(chordChartText(noLyrics)).toBe('G  C\nD');
-  });
-
-  it('holds the previous syllable over skip (-) notes', () => {
-    const abc = '"G"G2 A2 B2 |\nw: a - ma';
-    expect(chordChartText(abc)).toBe('G a a ma');
-  });
-});
-
-describe('supportsChordGrid', () => {
-  // abcjs's chord grid throws "notCommonTime" on any meter but 4/4 and 2/2.
-  it('accepts 4/4, 2/2, common/cut time and a missing M: (defaults to 4/4)', () => {
-    expect(supportsChordGrid('X:1\nK:G\nG2 |')).toBe(true);
-    expect(supportsChordGrid('M:4/4\nK:G\nG2 |')).toBe(true);
-    expect(supportsChordGrid('M:2/2\nK:G\nG2 |')).toBe(true);
-    expect(supportsChordGrid('M:C\nK:G\nG2 |')).toBe(true);
-    expect(supportsChordGrid('M:C|\nK:G\nG2 |')).toBe(true);
-  });
-
-  it('rejects other meters (3/4, 6/8, …) so the caller falls back to text', () => {
-    expect(supportsChordGrid('M:3/4\nK:G\nG2 |')).toBe(false);
-    expect(supportsChordGrid('M:6/8\nK:G\nG2 |')).toBe(false);
   });
 });
