@@ -122,6 +122,14 @@ describe('ArrangementViewPage', () => {
     renderApp('/arrangements/a1');
 
     await screen.findAllByRole('heading', { level: 2 });
+    // The view seeds from the stored preference once the session resolves —
+    // wait for the chords view to actually be active before asserting on it
+    // (under full-suite load the seed can land a tick after the headings).
+    await waitFor(() => {
+      expect(document.querySelectorAll('.text-accent').length).toBeGreaterThan(
+        0,
+      );
+    });
     // No abcjs render in this view at all.
     expect(vi.mocked(renderAbc).mock.calls).toHaveLength(0);
     // Chord names render inline as accent spans, in section order V1, C1, V1.

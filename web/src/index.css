@@ -1,17 +1,19 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/inter';
 
-/* Design tokens — from docs/design-notes.md (Vibe mockup v0.1).
+/* Design tokens — decisions and rationale in docs/design-notes.md (issue #56:
+   the neutral ramp carries a faint green cast so the accent belongs to the
+   palette instead of sitting on gray; the accent itself is unchanged).
    Dark is the default (stage use). In Tailwind v4 every --color-* also
    becomes a utility (bg-bg, text-muted, border-border, …). The light theme
    overrides the same variables under [data-theme='light'], so all utilities
-   follow automatically when the toggle lands post-P2.0. */
+   follow automatically. */
 @theme {
-  --color-bg: #0a0b0e;
-  --color-surface: #101216;
-  --color-raised: #171a20;
-  --color-border: #22262f;
-  --color-border-strong: #303542;
+  --color-bg: #090d0b;
+  --color-surface: #0e1412;
+  --color-raised: #141b17;
+  --color-border: #1f2a24;
+  --color-border-strong: #2c3a32;
   --color-text: #f2f3f5;
   --color-muted: #a4aab4;
   --color-subtle: #666c76;
@@ -27,11 +29,11 @@
 }
 
 :root[data-theme='light'] {
-  --color-bg: #f6f6f4;
-  --color-surface: #ffffff;
-  --color-raised: #efefea;
-  --color-border: #e5e5df;
-  --color-border-strong: #d5d5cc;
+  --color-bg: #f4f7f3;
+  --color-surface: #fcfefb;
+  --color-raised: #ebf0ea;
+  --color-border: #dfe7de;
+  --color-border-strong: #ccd6cb;
   --color-text: #191a1d;
   --color-muted: #5e636d;
   --color-subtle: #9a9fa8;

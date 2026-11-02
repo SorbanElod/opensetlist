@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Guitar, Mic, Music } from 'lucide-react';
 
 import { ApiError } from '../api/client';
@@ -22,20 +22,16 @@ export function ArrangementRenderer({
 }) {
   const auth = useAuth();
 
-  const [view, setView] = useState<ViewMode>('sheet');
-  const viewInitialized = useRef(false);
+  // Seeded once at mount from the stored preference. Both pages using this
+  // renderer sit behind the auth gate, so the session is already resolved at
+  // mount and the first render already has the right view — no sheet flash.
+  // Later preference changes (this component's own "Set as my default") only
+  // reseed on remount, never yank the view mid-song.
+  const [view, setView] = useState<ViewMode>(() =>
+    auth.status === 'authenticated' ? auth.user.defaultView : 'sheet',
+  );
   const [savingDefault, setSavingDefault] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-
-  // Seed the view from the stored preference exactly once, when the session
-  // resolves — later changes to the preference (this component's own save)
-  // must not yank the view mid-song.
-  useEffect(() => {
-    if (auth.status === 'authenticated' && !viewInitialized.current) {
-      viewInitialized.current = true;
-      setView(auth.user.defaultView);
-    }
-  }, [auth]);
 
   const isDefault =
     auth.status === 'authenticated' && auth.user.defaultView === view;

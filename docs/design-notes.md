@@ -1,52 +1,71 @@
-# Design notes — extracted from the Vibe-chat mockup (v0.1)
+# Design notes — OpenSetlist web
 
-Source: the interactive React mockup drafted in Vibe chat (P2 focus, P3 preview).
-Adopted into the real app as CSS tokens in `web/src/index.css` (`@theme`), which
-Tailwind v4 turns into utilities (`bg-bg`, `text-muted`, `border-border`, …).
+The design tokens live in `web/src/index.css` (`@theme`), which Tailwind v4
+turns into utilities (`bg-bg`, `text-muted`, `border-border`, …). This file
+records the decisions and their rationale — every choice below should be
+defensible as "we chose X because Y".
 
 ## Palette (dark = default, stage use)
 
-| token     | hex     | use                                                            |
-| --------- | ------- | -------------------------------------------------------------- |
-| bg0       | #0A0B0E | page background                                                |
-| bg1       | #101216 | card / surface                                                 |
-| bg2       | #171A20 | raised / hover                                                 |
-| bg3       | #1E2229 | inset                                                          |
-| bd        | #22262F | hairline border                                                |
-| bd-strong | #303542 | hover border                                                   |
-| t1        | #F2F3F5 | primary text                                                   |
-| t2        | #A4AAB4 | muted text                                                     |
-| t3        | #666C76 | subtle text                                                    |
-| acc       | #3ECF8E | the ONE accent (green): primary actions, active states, chords |
-| on-acc    | #0A1A12 | text on accent fill                                            |
-| err       | #E5776F | errors                                                         |
+| token         | hex     | use                                                            |
+| ------------- | ------- | -------------------------------------------------------------- |
+| bg            | #090D0B | page background                                                |
+| surface       | #0E1412 | card / surface                                                 |
+| raised        | #141B17 | raised / hover                                                 |
+| border        | #1F2A24 | hairline border                                                |
+| border-strong | #2C3A32 | hover border                                                   |
+| text          | #F2F3F5 | primary text                                                   |
+| muted         | #A4AAB4 | muted text                                                     |
+| subtle        | #666C76 | subtle text                                                    |
+| accent        | #3ECF8E | the ONE accent (green): primary actions, active states, chords |
+| on-accent     | #0A1A12 | text on accent fill                                            |
+| error         | #E5776F | errors                                                         |
 
-Light theme (shipped from P2.0: toggle in the shell + auth pages, OS
-`prefers-color-scheme` as the initial default, dark fallback): bg #F6F6F4/#FFFFFF/#EFEFEA,
-bd #E5E5DF/#D5D5CC, t1 #191A1D, t2 #5E636D, t3 #9A9FA8, acc #157A52, on-acc #FFFFFF, err #C7483F.
+Light theme (toggle in the shell + auth pages, OS `prefers-color-scheme` as
+the initial default, dark fallback): bg #F4F7F3 / surface #FCFEFB / raised
+#EBF0EA, border #DFE7DE / #CCD6CB, text #191A1D, muted #5E636D, subtle
+#9A9FA8, accent #157A52, on-accent #FFFFFF, error #C7483F.
+
+**Why this palette:** the primary device is a phone on stage, so dark is the
+default and the accent is a single "go/play" green. The neutral ramp carries
+a faint green cast (issue #56) so the accent reads as part of the system
+rather than pasted on gray — the earlier pure-gray neutrals made the theme
+look generic. One accent only; no gradients on surfaces.
 
 ## Type
 
-Inter (self-hosted via `@fontsource-variable/inter`, offline-friendly). Scale:
-22/700 screen title · 14/600 row title · 13/400 body · 11.5/500 meta · mono for keys/BPM/ABC.
+Inter Variable only (self-hosted via `@fontsource-variable/inter`,
+offline-friendly). Scale: 22/700 screen title · 14/600 row title · 13/400
+body · 11.5/500 meta · mono for keys/BPM/ABC. A display font for the wordmark
+and screen titles was considered and rejected (issue #56): no new font
+dependencies in the MVP — Inter at 700 with tight tracking carries the titles.
 
-## Rules of thumb (from the mockup)
+## Rules of thumb
 
 - 4px spacing grid; radii: 10px controls, 12–16px cards, 999px chips
 - one accent color only; borders over shadows in dark; hairline 1px borders
 - tap targets ≥ 40px on mobile (we use 44px)
-- mobile: bottom tab bar (Home / Songs / center + / Setlists) — lands with P2.1
-- desktop: 228px sidebar with logo, group switcher, nav, theme toggle, user card
+- navigation: a top header bar on all screen sizes (Home / Songs in the
+  shell). The mobile bottom tab bar from the early sketch was NOT adopted —
+  the app has two primary destinations, a header is simpler and works in
+  landscape on stage. Revisit when setlists (#12) add a third destination.
 
 ## Components (in index.css as plain classes)
 
 `.card`, `.btn` + `.btn-primary`/`.btn-outline`/`.btn-ghost` (`.btn-block`),
 `.input` (focus ring = accent-soft), `.flabel` (uppercase 11.5px), `.field`,
-`.field-error`, `.error-banner`. Chips/segmented controls land with P2.1/P2.4.
+`.field-error`, `.error-banner`. Segmented control (the Sheet | Chords |
+Lyrics view toggle) shipped in P2.4 as an inline-flex button group.
 
 ## Decisions taken
 
-- Icons: `lucide-react` (not the mockup's nucleo-sharp) — React standard, ISC, tree-shakeable.
-- Logo mark: green rounded square + music-note icon (`LogoMark` component).
-- framer-motion NOT adopted: its transitions are plain CSS here. Revisit for P3 live view.
-- Screens in the mockup beyond auth (home/library/song/editor/setlists) map to P2.1–P3 issues.
+- Icons: `lucide-react` — React standard, ISC, tree-shakeable.
+- Logo mark: hand-drawn inline SVG — three staff lines with an eighth note in
+  the accent (`LogoMark` component), not a colored tile with an icon glyph
+  (issue #56).
+- Active nav item carries a small accent dot (issue #56) — the one signature
+  accent moment in the shell.
+- framer-motion NOT adopted: transitions are plain CSS. Revisit for the P3
+  live view.
+- Screens beyond auth (home dashboard / library / song / editor / setlists)
+  map to P2.1–P3 issues; the home dashboard content lands with P3 (#12/#13).

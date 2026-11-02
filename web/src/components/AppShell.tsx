@@ -10,6 +10,20 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     isActive ? 'bg-raised text-text' : 'text-muted hover:text-text'
   }`;
 
+// The active nav item carries a small accent dot (issue #56) — always
+// rendered so the label doesn't shift when the active route changes.
+function navLabel(isActive: boolean, label: string) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span
+        aria-hidden
+        className={`h-1 w-1 rounded-full ${isActive ? 'bg-accent' : 'bg-transparent'}`}
+      />
+      {label}
+    </span>
+  );
+}
+
 // App shell: header (logo, nav, user, theme, logout) + routed page content.
 // The container widens on tablets/laptops and stays a centered column on
 // phones, in either orientation.
@@ -41,10 +55,10 @@ export function AppShell() {
           </NavLink>
           <nav className="flex items-center gap-1">
             <NavLink to="/" end className={navLinkClass}>
-              Home
+              {({ isActive }) => navLabel(isActive, 'Home')}
             </NavLink>
             <NavLink to="/songs" className={navLinkClass}>
-              Songs
+              {({ isActive }) => navLabel(isActive, 'Songs')}
             </NavLink>
           </nav>
           <div className="ml-auto flex items-center gap-2">
