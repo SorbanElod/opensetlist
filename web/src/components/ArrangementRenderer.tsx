@@ -1,10 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
-import { Guitar, Mic, Music } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { Guitar, Mic, Minus, Music, Plus } from 'lucide-react';
 
 import { ApiError } from '../api/client';
 import type { Arrangement } from '../api/arrangements';
 import { useAuth } from '../auth/AuthContext';
-import { lyricsText, orderedSections, type ViewMode } from '../lib/abcViews';
+import {
+  lyricsText,
+  orderedSections,
+  sheetAbc,
+  type ViewMode,
+} from '../lib/abcViews';
 import { AbcRenderer } from './AbcRenderer';
 import { ChordChartView } from './ChordChartView';
 
@@ -17,25 +22,36 @@ import { ChordChartView } from './ChordChartView';
 // persists the choice.
 export function ArrangementRenderer({
   arrangement,
+  trailing,
 }: {
   arrangement: Arrangement;
+  // Optional control docked at the right end of the view-toggle row (the
+  // arrangement switcher on the song detail page).
+  trailing?: ReactNode;
 }) {
   const auth = useAuth();
 
-  const [view, setView] = useState<ViewMode>('sheet');
-  const viewInitialized = useRef(false);
+  // Seeded once at mount from the stored preference. Both pages using this
+  // renderer sit behind the auth gate, so the session is already resolved at
+  // mount and the first render already has the right view — no sheet flash.
+  // Later preference changes (this component's own "Set as my default") only
+  // reseed on remount, never yank the view mid-song.
+  const [view, setView] = useState<ViewMode>(() =>
+    auth.status === 'authenticated' ? auth.user.defaultView : 'sheet',
+  );
   const [savingDefault, setSavingDefault] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Seed the view from the stored preference exactly once, when the session
-  // resolves — later changes to the preference (this component's own save)
-  // must not yank the view mid-song.
-  useEffect(() => {
-    if (auth.status === 'authenticated' && !viewInitialized.current) {
-      viewInitialized.current = true;
-      setView(auth.user.defaultView);
-    }
-  }, [auth]);
+  // View zoom (local state, not persisted): applied via CSS `zoom` so both
+  // text and the abcjs SVG scale. Bounds 50%–150%, steps of 10%.
+  const ZOOM_MIN = 0.5;
+  const ZOOM_MAX = 1.5;
+  const [scale, setScale] = useState(1);
+  function zoomBy(delta: number) {
+    setScale((s) =>
+      Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round((s + delta) * 10) / 10)),
+    );
+  }
 
   const isDefault =
     auth.status === 'authenticated' && auth.user.defaultView === view;
@@ -72,7 +88,10 @@ export function ArrangementRenderer({
   // flowing HTML chord chart and lyrics plain text — all derived from the
   // same ABC at render time (see lib/abcViews).
   function renderSection(content: string) {
-    if (view === 'sheet') return <AbcRenderer abc={content} />;
+    // Sheet view: no zoom for now (abcjs responsive mode ignores its scale
+    // param and CSS zoom truncates the staff — follow-up issue). Text views
+    // scale via the compensated zoom wrapper around all sections.
+    if (view === 'sheet') return <AbcRenderer abc={sheetAbc(content)} />;
     if (view === 'chords') return <ChordChartView abc={content} />;
     const text = lyricsText(content);
     return text.trim() ? (
@@ -88,9 +107,9 @@ export function ArrangementRenderer({
 
   return (
     <>
-      <div className="mb-4 flex items-center gap-2">
+      <div className="mb-4 flex flex-wrap items-center gap-2">
         <div
-          className="inline-flex rounded-lg border border-border bg-bg p-0.5"
+          className="inline-flex rounded-md border border-border bg-bg p-0.5"
           role="group"
           aria-label="View"
         >
@@ -119,6 +138,37 @@ export function ArrangementRenderer({
             <Mic size={14} /> Lyrics
           </button>
         </div>
+        {/* Zoom is hidden in sheet view for now — scaling the abcjs staff
+            without truncating it needs a follow-up (see issue). */}
+        {view !== 'sheet' && (
+          <div
+            className="inline-flex items-center rounded-md border border-border bg-bg p-0.5"
+            role="group"
+            aria-label="Zoom"
+          >
+            <button
+              type="button"
+              aria-label="Zoom out"
+              disabled={scale <= ZOOM_MIN}
+              onClick={() => zoomBy(-0.1)}
+              className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
+            >
+              <Minus size={13} />
+            </button>
+            <span className="w-9 text-center text-[11px] tabular-nums text-muted">
+              {Math.round(scale * 100)}%
+            </span>
+            <button
+              type="button"
+              aria-label="Zoom in"
+              disabled={scale >= ZOOM_MAX}
+              onClick={() => zoomBy(0.1)}
+              className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
+            >
+              <Plus size={13} />
+            </button>
+          </div>
+        )}
         {!isDefault && (
           <button
             type="button"
@@ -128,6 +178,9 @@ export function ArrangementRenderer({
           >
             {savingDefault ? 'Saving…' : 'Set as my default'}
           </button>
+        )}
+        {trailing && (
+          <div className="ml-auto flex items-center">{trailing}</div>
         )}
       </div>
 
@@ -143,20 +196,31 @@ export function ArrangementRenderer({
         </p>
       )}
 
-      <div className="flex flex-col gap-3">
-        {sections.map((section, i) => (
-          <section
-            key={`${section.label}-${i}`}
-            className="card rounded-xl p-4"
-          >
-            <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-wide text-muted">
-              {section.label}
-            </h2>
-            {/* All views derive from the same stored ABC at render
-                time — nothing derived is persisted. */}
-            {renderSection(section.content)}
-          </section>
-        ))}
+      {/* All sections in ONE panel with no separators — just whitespace;
+          each section's label heading is the only structure. */}
+      <div className="card px-4 py-2" data-testid="arrangement-sections">
+        {/* Text views: `zoom` scales text, labels and the spacing between
+            sections; the width compensation keeps the card at its normal
+            on-screen width (text wraps, nothing is cut off). Sheet view:
+            no compensation here — the SVG scales via its own zoom wrapper
+            and scrolls inside the section instead of overflowing the page. */}
+        <div
+          style={
+            view === 'sheet' ? {} : { zoom: scale, width: `${100 / scale}%` }
+          }
+          data-testid="scaled-content"
+        >
+          {sections.map((section, i) => (
+            <section key={`${section.label}-${i}`} className="py-2">
+              <h2 className="mb-1 text-[13px] font-semibold uppercase tracking-wide text-muted">
+                {section.label}
+              </h2>
+              {/* All views derive from the same stored ABC at render
+                  time — nothing derived is persisted. */}
+              {renderSection(section.content)}
+            </section>
+          ))}
+        </div>
       </div>
     </>
   );

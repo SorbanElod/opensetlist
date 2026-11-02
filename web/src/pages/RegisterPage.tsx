@@ -83,8 +83,8 @@ export function RegisterPage() {
           </span>
         </div>
 
-        <div className="card rounded-2xl p-5">
-          <h1 className="mb-1 text-[22px] font-bold tracking-tight">
+        <div className="card p-5">
+          <h1 className="mb-1 text-[20px] font-bold tracking-tight">
             Create your account
           </h1>
           <p className="mb-5 text-[13px] text-muted">

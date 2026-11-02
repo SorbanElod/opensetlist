@@ -5,16 +5,8 @@ import {
   type ChangeEvent,
   type KeyboardEvent,
 } from 'react';
-import { Link, useNavigate } from 'react-router';
-import {
-  Check,
-  ChevronRight,
-  Plus,
-  Search,
-  Trash2,
-  Upload,
-  X,
-} from 'lucide-react';
+import { useNavigate } from 'react-router';
+import { Check, Filter, Plus, Search, Trash2, Upload, X } from 'lucide-react';
 
 import { ApiError } from '../api/client';
 import {
@@ -25,6 +17,10 @@ import {
 } from '../api/songs';
 import { deleteTag, listTags, type Tag } from '../api/tags';
 import { canManage, canWrite, useAuth, useMyRole } from '../auth/AuthContext';
+import { EmptyState } from '../components/EmptyState';
+import { ListRow } from '../components/ListRow';
+import { PageHeader } from '../components/PageHeader';
+import { Popover } from '../components/Popover';
 
 export function SongsPage() {
   const auth = useAuth();
@@ -42,6 +38,7 @@ export function SongsPage() {
   const [tagMenuOpen, setTagMenuOpen] = useState(false);
   const [confirmingTag, setConfirmingTag] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
+  const [filterOpen, setFilterOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const canEdit =
@@ -172,6 +169,12 @@ export function SongsPage() {
 
   const filtering =
     query.trim() !== '' || selectedTags.length > 0 || tagLike !== null;
+  const activeFilterCount = selectedTags.length + (tagLike !== null ? 1 : 0);
+
+  function clearFilters() {
+    setSelectedTags([]);
+    setTagLike(null);
+  }
   const exactSuggestions = tagSuggestions.filter(
     (t) => !selectedTags.includes(t.name),
   );
@@ -181,154 +184,195 @@ export function SongsPage() {
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <h1 className="text-[22px] font-bold tracking-tight">Songs</h1>
-        {canEdit && (
-          <div className="flex gap-1.5">
+      <PageHeader
+        title="Songs"
+        actions={
+          canEdit && (
+            <>
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Upload size={15} /> Import JSON
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => navigate('/songs/new')}
+              >
+                <Plus size={15} /> New song
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                aria-label="Import songs from JSON"
+                onChange={onImportFile}
+              />
+            </>
+          )
+        }
+      />
+
+      <div className="mb-3 flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search
+            size={15}
+            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-subtle"
+          />
+          <input
+            className="input pl-10"
+            type="search"
+            placeholder="Search titles, authors…"
+            aria-label="Search songs"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        <Popover
+          open={filterOpen}
+          onClose={() => setFilterOpen(false)}
+          label="Filters"
+          panelClassName="w-[300px] max-w-[calc(100vw-2rem)]"
+          anchor={
             <button
               type="button"
               className="btn btn-outline"
-              onClick={() => fileInputRef.current?.click()}
+              aria-haspopup="dialog"
+              aria-expanded={filterOpen}
+              onClick={() => setFilterOpen((v) => !v)}
             >
-              <Upload size={15} /> Import JSON
+              <Filter size={15} /> Filters
+              {activeFilterCount > 0 && (
+                <span className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-[10.5px] font-bold text-on-accent">
+                  {activeFilterCount}
+                </span>
+              )}
             </button>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => navigate('/songs/new')}
-            >
-              <Plus size={15} /> New song
-            </button>
+          }
+        >
+          <div className="flabel">Tags</div>
+          <div className="relative">
             <input
-              ref={fileInputRef}
-              type="file"
-              accept="application/json,.json"
-              className="hidden"
-              aria-label="Import songs from JSON"
-              onChange={onImportFile}
+              className="input"
+              type="text"
+              aria-label="Filter by tag"
+              placeholder="Filter by tag… (type to search)"
+              value={tagInput}
+              onChange={(e) => {
+                setTagInput(e.target.value);
+                setTagMenuOpen(true);
+              }}
+              onKeyDown={onTagKeyDown}
+              onFocus={() => setTagMenuOpen(true)}
+              onBlur={() => setTimeout(() => setTagMenuOpen(false), 150)}
             />
-          </div>
-        )}
-      </div>
-
-      <div className="relative mb-3">
-        <Search
-          size={15}
-          className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-subtle"
-        />
-        <input
-          className="input pl-10"
-          type="search"
-          placeholder="Search titles, authors…"
-          aria-label="Search songs"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-      </div>
-
-      <div className="relative mb-3">
-        <input
-          className="input"
-          type="text"
-          aria-label="Filter by tag"
-          placeholder="Filter by tag… (type to search)"
-          value={tagInput}
-          onChange={(e) => {
-            setTagInput(e.target.value);
-            setTagMenuOpen(true);
-          }}
-          onKeyDown={onTagKeyDown}
-          onFocus={() => setTagMenuOpen(true)}
-          onBlur={() => setTimeout(() => setTagMenuOpen(false), 150)}
-        />
-        {tagMenuOpen && (exactSuggestions.length > 0 || inputIsNewTag) && (
-          <ul className="absolute z-10 mt-1 w-full rounded-lg border border-border bg-raised p-1 shadow-lg">
-            {exactSuggestions.map((s) => (
-              <li key={s.id} className="flex items-center">
-                <button
-                  type="button"
-                  className="flex-1 rounded-md px-2 py-1 text-left font-mono text-[13px] hover:bg-surface"
-                  onMouseDown={(e) => {
-                    e.preventDefault(); // keep focus; blur closes the menu
-                    addTag(s.name);
-                  }}
-                >
-                  {s.name}
-                </button>
-                {canManageTags && (
-                  <button
-                    type="button"
-                    aria-label={
-                      confirmingTag === s.id
-                        ? `Confirm delete tag ${s.name}`
-                        : `Delete tag ${s.name}`
-                    }
-                    className="px-2 text-subtle hover:text-error"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      void onDeleteTag(s);
-                    }}
-                  >
-                    {confirmingTag === s.id ? (
-                      <Check size={12} />
-                    ) : (
-                      <Trash2 size={12} />
+            {/* In-flow (not absolute) so the list pushes the ALL/ANY row
+                down instead of covering it; capped height with scroll. */}
+            {tagMenuOpen && (exactSuggestions.length > 0 || inputIsNewTag) && (
+              <ul className="mt-1 max-h-48 w-full overflow-y-auto rounded-lg border border-border bg-raised p-1">
+                {exactSuggestions.map((s) => (
+                  <li key={s.id} className="flex items-center">
+                    <button
+                      type="button"
+                      className="flex-1 rounded-md px-2 py-1 text-left font-mono text-[13px] hover:bg-surface"
+                      onMouseDown={(e) => {
+                        e.preventDefault(); // keep focus; blur closes the menu
+                        addTag(s.name);
+                      }}
+                    >
+                      {s.name}
+                    </button>
+                    {canManageTags && (
+                      <button
+                        type="button"
+                        aria-label={
+                          confirmingTag === s.id
+                            ? `Confirm delete tag ${s.name}`
+                            : `Delete tag ${s.name}`
+                        }
+                        className="px-2 text-subtle hover:text-error"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          void onDeleteTag(s);
+                        }}
+                      >
+                        {confirmingTag === s.id ? (
+                          <Check size={12} />
+                        ) : (
+                          <Trash2 size={12} />
+                        )}
+                      </button>
                     )}
-                  </button>
+                  </li>
+                ))}
+                {inputIsNewTag && (
+                  <li>
+                    <button
+                      type="button"
+                      className="w-full rounded-md px-2 py-1 text-left text-[13px] italic text-muted hover:bg-surface"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setTagLike(tagInput.trim().toLowerCase());
+                        setTagInput('');
+                      }}
+                    >
+                      any tag containing “{tagInput.trim().toLowerCase()}”
+                    </button>
+                  </li>
                 )}
-              </li>
-            ))}
-            {inputIsNewTag && (
-              <li>
-                <button
-                  type="button"
-                  className="w-full rounded-md px-2 py-1 text-left text-[13px] italic text-muted hover:bg-surface"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    setTagLike(tagInput.trim().toLowerCase());
-                    setTagInput('');
-                  }}
-                >
-                  any tag containing “{tagInput.trim().toLowerCase()}”
-                </button>
-              </li>
+              </ul>
             )}
-          </ul>
-        )}
+          </div>
+
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <div
+              className="flex overflow-hidden rounded-md border border-border"
+              role="group"
+              aria-label="Tag match mode"
+            >
+              {(
+                [
+                  { value: true, label: 'ALL' },
+                  { value: false, label: 'ANY' },
+                ] as const
+              ).map((opt) => (
+                <button
+                  key={opt.label}
+                  type="button"
+                  aria-pressed={matchAll === opt.value}
+                  className={`px-2 py-1 text-[11px] font-semibold ${
+                    matchAll === opt.value
+                      ? 'bg-accent text-on-accent'
+                      : 'bg-raised text-muted'
+                  }`}
+                  onClick={() => setMatchAll(opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {activeFilterCount > 0 && (
+              <button
+                type="button"
+                className="btn btn-ghost px-2 py-1 text-[12px]"
+                onClick={clearFilters}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </Popover>
       </div>
 
       {(selectedTags.length > 0 || tagLike !== null) && (
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
-          <div
-            className="flex overflow-hidden rounded-lg border border-border"
-            role="group"
-            aria-label="Tag match mode"
-          >
-            {(
-              [
-                { value: true, label: 'ALL' },
-                { value: false, label: 'ANY' },
-              ] as const
-            ).map((opt) => (
-              <button
-                key={opt.label}
-                type="button"
-                aria-pressed={matchAll === opt.value}
-                className={`px-2 py-1 text-[11px] font-semibold ${
-                  matchAll === opt.value
-                    ? 'bg-accent text-on-accent'
-                    : 'bg-raised text-muted'
-                }`}
-                onClick={() => setMatchAll(opt.value)}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
           {selectedTags.map((name) => (
             <span
               key={name}
-              className="inline-flex items-center gap-1 rounded-lg border border-accent-border bg-accent-soft px-2 py-0.5 font-mono text-[12px] text-accent"
+              className="inline-flex items-center gap-1 rounded-md border border-accent-border bg-accent-soft px-2 py-0.5 font-mono text-[12px] text-accent"
             >
               {name}
               <button
@@ -344,7 +388,7 @@ export function SongsPage() {
             </span>
           ))}
           {tagLike !== null && (
-            <span className="inline-flex items-center gap-1 rounded-lg border border-accent-border bg-accent-soft px-2 py-0.5 font-mono text-[12px] text-accent">
+            <span className="inline-flex items-center gap-1 rounded-md border border-accent-border bg-accent-soft px-2 py-0.5 font-mono text-[12px] text-accent">
               ~{tagLike}
               <button
                 type="button"
@@ -367,7 +411,7 @@ export function SongsPage() {
       {info && (
         <p
           role="status"
-          className="mb-3 rounded-lg border border-accent-border bg-accent-soft px-3 py-2 text-[12.5px] text-accent"
+          className="mb-3 rounded-md border border-accent-border bg-accent-soft px-3 py-2 text-[12.5px] text-accent"
         >
           {info}
         </p>
@@ -378,34 +422,24 @@ export function SongsPage() {
       )}
 
       {songs !== null && songs.length === 0 && (
-        <div className="card rounded-2xl p-5">
-          <p className="text-[13.5px] text-muted">
-            {filtering ? 'No songs match your filters.' : 'No songs yet.'}
-          </p>
-          {canEdit && !filtering && (
-            <Link
-              to="/songs/new"
-              className="mt-3 inline-flex font-semibold text-accent"
-            >
-              Add the first song
-            </Link>
-          )}
-        </div>
+        <EmptyState
+          action={
+            canEdit && !filtering
+              ? { to: '/songs/new', label: 'Add the first song' }
+              : undefined
+          }
+        >
+          {filtering ? 'No songs match your filters.' : 'No songs yet.'}
+        </EmptyState>
       )}
 
-      <div className="flex flex-col gap-1.5">
+      <div className="list">
         {songs?.map((song) => (
-          <button
+          <ListRow
             key={song.id}
-            type="button"
-            className="card flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors hover:border-border-strong hover:bg-raised"
-            onClick={() => navigate(`/songs/${song.id}`)}
-          >
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[13.5px] font-semibold">
-                {song.title}
-              </div>
-              <div className="truncate text-[11.5px] text-muted">
+            title={song.title}
+            meta={
+              <>
                 {song.author ?? '—'}
                 {song.tags.length > 0 && (
                   <span className="text-subtle">
@@ -413,16 +447,20 @@ export function SongsPage() {
                     · {song.tags.join(' · ')}
                   </span>
                 )}
-              </div>
-            </div>
-            <span className="shrink-0 rounded-md bg-raised px-2 py-0.5 font-mono text-[12.5px] font-semibold text-text">
-              {song.defaultKey}
-            </span>
-            <span className="hidden shrink-0 text-[10.5px] text-subtle sm:inline">
-              {new Date(song.createdAt).toLocaleDateString()}
-            </span>
-            <ChevronRight size={16} className="shrink-0 text-subtle" />
-          </button>
+              </>
+            }
+            trailing={
+              <>
+                <span className="shrink-0 rounded-md border border-accent-border bg-accent-soft px-2 py-0.5 font-mono text-[12.5px] font-semibold tabular-nums text-accent">
+                  {song.defaultKey}
+                </span>
+                <span className="hidden shrink-0 text-[10.5px] tabular-nums text-subtle sm:inline">
+                  {new Date(song.createdAt).toLocaleDateString()}
+                </span>
+              </>
+            }
+            onClick={() => navigate(`/songs/${song.id}`)}
+          />
         ))}
       </div>
     </div>

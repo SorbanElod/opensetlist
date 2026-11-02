@@ -1,11 +1,13 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/inter';
 
-/* Design tokens — from docs/design-notes.md (Vibe mockup v0.1).
-   Dark is the default (stage use). In Tailwind v4 every --color-* also
-   becomes a utility (bg-bg, text-muted, border-border, …). The light theme
-   overrides the same variables under [data-theme='light'], so all utilities
-   follow automatically when the toggle lands post-P2.0. */
+/* Design tokens — decisions and rationale in docs/design-notes.md. Dark is
+   the default (stage use) and its neutral ramp is plain grey — the green
+   lives ONLY in the accent (the green-cast neutrals from the first #56
+   attempt were reverted: the cast read as muddy, grey reads cleaner).
+   In Tailwind v4 every --color-* also becomes a utility (bg-bg, text-muted,
+   border-border, …). The light theme overrides the same variables under
+   [data-theme='light'], so all utilities follow automatically. */
 @theme {
   --color-bg: #0a0b0e;
   --color-surface: #101216;
@@ -27,11 +29,11 @@
 }
 
 :root[data-theme='light'] {
-  --color-bg: #f6f6f4;
-  --color-surface: #ffffff;
-  --color-raised: #efefea;
-  --color-border: #e5e5df;
-  --color-border-strong: #d5d5cc;
+  --color-bg: #f4f7f3;
+  --color-surface: #fcfefb;
+  --color-raised: #ebf0ea;
+  --color-border: #dfe7de;
+  --color-border-strong: #ccd6cb;
   --color-text: #191a1d;
   --color-muted: #5e636d;
   --color-subtle: #9a9fa8;
@@ -61,9 +63,38 @@ body {
    overridden by them (e.g. class="input pl-10": pl-10 wins over the padding
    below). State styles that never conflict stay as plain CSS underneath. */
 
+/* Radius scale (issue #56, v2): panels 8px, controls 6px, list rows square
+   with hairline dividers — sharp edges read deliberate, not generated. */
 @utility card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+/* A list is ONE panel; rows are divided by hairlines instead of each being
+   its own card (the old wall-of-rounded-cards look). Rows are direct
+   children of .list so the divider selector stays trivial. */
+@utility list {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+@utility list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
 }
 
 @utility btn {
@@ -74,7 +105,7 @@ body {
   min-height: 40px; /* tap target on mobile (design rule: >= 40px) */
   padding: 8px 14px;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: 6px;
   font-size: 13px;
   font-weight: 600;
   line-height: 1;
@@ -113,7 +144,7 @@ body {
   padding: 9px 12px;
   background: var(--color-bg);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: 6px;
   color: var(--color-text);
   font-size: 13.5px;
   outline: none;
@@ -152,7 +183,7 @@ body {
   padding: 0.75rem 1rem;
   background: var(--color-error-soft);
   border: 1px solid var(--color-error);
-  border-radius: 10px;
+  border-radius: 6px;
   color: var(--color-error);
   font-size: 13px;
 }
@@ -166,6 +197,14 @@ body {
 .btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.list > * + * {
+  border-top: 1px solid var(--color-border);
+}
+
+.list-row:hover {
+  background: var(--color-raised);
 }
 
 .btn-outline:hover,

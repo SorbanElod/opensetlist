@@ -7,6 +7,7 @@ import { getArrangement, type Arrangement } from '../api/arrangements';
 import { getSong, type Song } from '../api/songs';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 import { ArrangementRenderer } from '../components/ArrangementRenderer';
+import { PageHeader } from '../components/PageHeader';
 
 // On-stage view (issue #10): the arrangement's sections rendered through the
 // shared ArrangementRenderer — the same pipeline the song detail page uses
@@ -69,36 +70,34 @@ export function ArrangementViewPage() {
       )}
 
       {arrangement && (
-        <div className="card rounded-2xl p-5">
-          <div className="mb-1 flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="text-[22px] font-bold tracking-tight">
-                {arrangement.title}
-              </h1>
-              <p className="mt-0.5 text-[13px] text-muted">
+        <div className="card p-5">
+          <PageHeader
+            title={arrangement.title}
+            subtitle={
+              <>
                 {song ? song.title : ''} ·{' '}
-                <span className="font-mono">
+                <span className="font-mono tabular-nums">
                   {arrangement.originalKey}
                   {arrangement.bpm !== null ? ` · ${arrangement.bpm} BPM` : ''}
                 </span>
-              </p>
-            </div>
-            {canEdit && (
-              <Link
-                to={`/arrangements/${arrangement.id}/edit`}
-                className="btn btn-outline shrink-0"
-                aria-label={`Edit ${arrangement.title}`}
-              >
-                <Pencil size={14} /> Edit
-              </Link>
-            )}
-          </div>
+              </>
+            }
+            actions={
+              canEdit && (
+                <Link
+                  to={`/arrangements/${arrangement.id}/edit`}
+                  className="btn btn-outline shrink-0"
+                  aria-label={`Edit ${arrangement.title}`}
+                >
+                  <Pencil size={14} /> Edit
+                </Link>
+              )
+            }
+          />
 
           {/* View toggle + sections in play order: the one render pipeline
               shared with the song detail page (issue #51). */}
-          <div className="mt-3">
-            <ArrangementRenderer arrangement={arrangement} />
-          </div>
+          <ArrangementRenderer arrangement={arrangement} />
         </div>
       )}
     </div>

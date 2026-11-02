@@ -7,6 +7,8 @@ import { listArrangements, type Arrangement } from '../api/arrangements';
 import { deleteSong, getSong, type Song } from '../api/songs';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 import { ArrangementRenderer } from '../components/ArrangementRenderer';
+import { EmptyState } from '../components/EmptyState';
+import { ListRow } from '../components/ListRow';
 
 export function SongDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -100,10 +102,10 @@ export function SongDetailPage() {
       )}
 
       {song && (
-        <div className="card rounded-2xl p-5">
+        <div className="card p-5">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="text-[22px] font-bold tracking-tight">
+              <h1 className="text-[20px] font-bold tracking-tight">
                 {song.title}
               </h1>
               <p className="mt-0.5 text-[13px] text-muted">
@@ -164,32 +166,34 @@ export function SongDetailPage() {
               inline content (the read API already allows it). */}
           {selectedArrangement && (
             <div className="mt-6 border-t border-border pt-5">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <p className="min-w-0 truncate text-[15px] font-semibold">
-                  {selectedArrangement.title}
-                  <span className="ml-2 font-mono text-[11.5px] font-normal text-muted">
-                    {selectedArrangement.originalKey}
-                    {selectedArrangement.bpm !== null
-                      ? ` · ${selectedArrangement.bpm} BPM`
-                      : ''}
-                  </span>
-                </p>
-                {arrangements !== null && arrangements.length > 1 && (
-                  <select
-                    className="input shrink-0"
-                    aria-label="Arrangement"
-                    value={selectedArrangement.id}
-                    onChange={(e) => setSelectedArrangementId(e.target.value)}
-                  >
-                    {arrangements.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.title}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-              <ArrangementRenderer arrangement={selectedArrangement} />
+              <p className="mb-2 min-w-0 truncate text-[15px] font-semibold">
+                {selectedArrangement.title}
+                <span className="ml-2 font-mono text-[11.5px] font-normal tabular-nums text-muted">
+                  {selectedArrangement.originalKey}
+                  {selectedArrangement.bpm !== null
+                    ? ` · ${selectedArrangement.bpm} BPM`
+                    : ''}
+                </span>
+              </p>
+              <ArrangementRenderer
+                arrangement={selectedArrangement}
+                trailing={
+                  arrangements !== null && arrangements.length > 1 ? (
+                    <select
+                      className="input w-auto shrink-0 font-mono text-[12.5px]"
+                      aria-label="Arrangement"
+                      value={selectedArrangement.id}
+                      onChange={(e) => setSelectedArrangementId(e.target.value)}
+                    >
+                      {arrangements.map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.title}
+                        </option>
+                      ))}
+                    </select>
+                  ) : undefined
+                }
+              />
             </div>
           )}
 
@@ -210,47 +214,48 @@ export function SongDetailPage() {
               <p className="text-[13px] text-muted">Loading…</p>
             )}
             {arrangements !== null && arrangements.length === 0 && (
-              <p className="text-[13px] text-muted">
+              <EmptyState>
                 No arrangements yet — the music lives here.
-              </p>
+              </EmptyState>
             )}
 
-            <ul className="flex flex-col gap-1.5">
+            <ul className="list">
               {arrangements?.map((a) => (
-                <li
+                <ListRow
                   key={a.id}
-                  className="card flex items-center gap-3 rounded-xl px-4 py-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13.5px] font-semibold">
-                      {a.title}
-                    </p>
-                    <p className="truncate font-mono text-[11.5px] text-muted">
+                  as="li"
+                  title={a.title}
+                  meta={
+                    <span className="font-mono tabular-nums">
                       {a.originalKey}
                       {a.bpm !== null ? ` · ${a.bpm} BPM` : ''} ·{' '}
                       {a.sections.length} section
                       {a.sections.length === 1 ? '' : 's'}
-                    </p>
-                  </div>
-                  {/* View is the on-stage page (issue #10) — every role,
-                      readers included, can open it. */}
-                  <Link
-                    to={`/arrangements/${a.id}`}
-                    className="btn btn-outline shrink-0"
-                    aria-label={`View ${a.title}`}
-                  >
-                    <Play size={14} /> View
-                  </Link>
-                  {canEdit && (
-                    <Link
-                      to={`/arrangements/${a.id}/edit`}
-                      className="btn btn-outline shrink-0"
-                      aria-label={`Edit ${a.title}`}
-                    >
-                      <Pencil size={14} /> Edit
-                    </Link>
-                  )}
-                </li>
+                    </span>
+                  }
+                  trailing={
+                    <>
+                      {/* View is the on-stage page (issue #10) — every role,
+                          readers included, can open it. */}
+                      <Link
+                        to={`/arrangements/${a.id}`}
+                        className="btn btn-outline shrink-0"
+                        aria-label={`View ${a.title}`}
+                      >
+                        <Play size={14} /> View
+                      </Link>
+                      {canEdit && (
+                        <Link
+                          to={`/arrangements/${a.id}/edit`}
+                          className="btn btn-outline shrink-0"
+                          aria-label={`Edit ${a.title}`}
+                        >
+                          <Pencil size={14} /> Edit
+                        </Link>
+                      )}
+                    </>
+                  }
+                />
               ))}
             </ul>
           </div>

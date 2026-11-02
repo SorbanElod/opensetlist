@@ -32,6 +32,8 @@ export function AbcRenderer({
       try {
         // responsive: 'resize' fits the staff to the container width — the
         // primary device is a phone on stage, so notation must not overflow.
+        // (abcjs ignores its scale param in this mode and fits via viewBox,
+        // so view zoom is applied as CSS zoom on the wrapper instead.)
         renderAbc(target, abc, { responsive: 'resize' });
         setWarning(null);
       } catch {
@@ -51,7 +53,7 @@ export function AbcRenderer({
       <div
         ref={targetRef}
         data-testid="abc-renderer"
-        className="overflow-x-auto rounded-lg p-2 text-text [&_svg]:max-w-full"
+        className="overflow-x-auto rounded-lg p-1 text-text [&_svg]:max-w-full"
       />
       {warning && <p className="field-error">{warning}</p>}
     </div>

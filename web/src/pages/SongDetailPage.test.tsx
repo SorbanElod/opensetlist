@@ -164,12 +164,12 @@ describe('SongDetailPage (issue #51: inline default arrangement)', () => {
     stubApi({ defaultView: 'lyrics' });
     renderApp('/songs/s1');
 
-    // Lyrics view straight away: words only, no click. (The "no abcjs in
-    // lyrics view" property itself is covered by ArrangementViewPage tests —
-    // here the session may resolve a tick after the arrangements list, so
-    // the seeded view settles on lyrics immediately after mount.)
+    // Lyrics view straight away: words only, no abcjs render, no click —
+    // the renderer seeds the view before rendering sections, so the sheet
+    // view never flashes for a non-sheet default.
     expect((await screen.findAllByText('amazing grace')).length).toBe(2);
     expect(screen.getByText('how sweet')).toBeTruthy();
+    expect(vi.mocked(renderAbc).mock.calls).toHaveLength(0);
     expect(
       screen
         .getByRole('button', { name: /lyrics/i })

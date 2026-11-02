@@ -122,6 +122,14 @@ describe('ArrangementViewPage', () => {
     renderApp('/arrangements/a1');
 
     await screen.findAllByRole('heading', { level: 2 });
+    // The view seeds from the stored preference once the session resolves —
+    // wait for the chords view to actually be active before asserting on it
+    // (under full-suite load the seed can land a tick after the headings).
+    await waitFor(() => {
+      expect(document.querySelectorAll('.text-accent').length).toBeGreaterThan(
+        0,
+      );
+    });
     // No abcjs render in this view at all.
     expect(vi.mocked(renderAbc).mock.calls).toHaveLength(0);
     // Chord names render inline as accent spans, in section order V1, C1, V1.
@@ -196,6 +204,81 @@ describe('ArrangementViewPage', () => {
       ).toBe(true);
     });
     expect(arrangementCalls()).toBe(1);
+  });
+
+  it('sheet view strips T:/C: header lines so title/author are not repeated per section', async () => {
+    const ABC =
+      'X:1\nT:Amazing Grace — V1\nC:John Newton\nK:G\n"G"G2 A2 |\nw: a-ma-zing grace';
+    stubFetch((path) => {
+      if (path === '/api/auth/me')
+        return {
+          status: 200,
+          body: {
+            user: USER,
+            memberships: [{ groupId: 'g1', role: 'member' }],
+          },
+        };
+      if (path === '/api/arrangements/a1')
+        return {
+          status: 200,
+          body: {
+            arrangement: {
+              ...ARRANGEMENT,
+              defaultSequence: ['V1'],
+              sections: [{ label: 'V1', content: ABC }],
+            },
+          },
+        };
+      if (path === '/api/songs/s1')
+        return { status: 200, body: { song: SONG } };
+      return { status: 404, body: {} };
+    });
+    renderApp('/arrangements/a1');
+
+    await waitFor(() => {
+      expect(vi.mocked(renderAbc).mock.calls.length).toBeGreaterThan(0);
+    });
+    const rendered = String(vi.mocked(renderAbc).mock.calls[0]![1]);
+    expect(rendered).not.toContain('T:');
+    expect(rendered).not.toContain('C:John');
+    expect(rendered).toContain('K:G');
+    expect(rendered).toContain('w: a-ma-zing grace');
+  });
+
+  it('zooms the text views with the + / - controls, bounded at 50%–150%', async () => {
+    stubApi('lyrics');
+    renderApp('/arrangements/a1');
+
+    // one zoom wrapper around all sections (also scales row spacing)
+    const scaled = await screen.findByTestId('scaled-content');
+    expect(scaled.getAttribute('style')).toMatch(/zoom:\s*1(;|$)/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    expect(scaled.getAttribute('style')).toContain('zoom: 1.1');
+
+    // out six times from 1.1 down to 0.5 (the floor) — further clicks are
+    // disabled
+    const out = screen.getByRole('button', { name: 'Zoom out' });
+    for (let i = 0; i < 6; i++) fireEvent.click(out);
+    expect(scaled.getAttribute('style')).toContain('zoom: 0.5');
+    expect(out).toHaveProperty('disabled', true);
+    fireEvent.click(out);
+    expect(scaled.getAttribute('style')).toContain('zoom: 0.5');
+  });
+
+  it('hides the zoom control in sheet view (scaling the staff is a follow-up issue)', async () => {
+    stubApi('sheet');
+    renderApp('/arrangements/a1');
+
+    await waitFor(() => {
+      expect(vi.mocked(renderAbc).mock.calls.length).toBeGreaterThan(0);
+    });
+    expect(screen.queryByRole('button', { name: 'Zoom in' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Zoom out' })).toBeNull();
+
+    // but it is available in the text views
+    fireEvent.click(screen.getByRole('button', { name: /lyrics/i }));
+    expect(await screen.findByRole('button', { name: 'Zoom in' })).toBeTruthy();
   });
 
   it('offers "Set as my default" when the view differs, and PATCHes /api/auth/me', async () => {
