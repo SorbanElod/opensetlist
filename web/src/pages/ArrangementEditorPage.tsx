@@ -1,4 +1,11 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type TextareaHTMLAttributes,
+} from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import {
   ArrowDown,
@@ -25,6 +32,37 @@ import { getSong, KEYS, type Song } from '../api/songs';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 import { AbcRenderer } from '../components/AbcRenderer';
 import { PageHeader } from '../components/PageHeader';
+
+// Textarea that grows with its content (rows=1, height = scrollHeight): the
+// page scrolls, never an inner scrollbar — nested scrolling panels in the
+// section editor were confusing.
+function AutoTextarea({
+  value,
+  onChange,
+  ...rest
+}: {
+  value: string;
+  onChange: (e: ChangeEvent<HTMLTextAreaElement>) => void;
+} & Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'value' | 'onChange'>) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (el) {
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight}px`;
+    }
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      className="input resize-none overflow-hidden font-mono text-[12px]"
+      value={value}
+      onChange={onChange}
+      {...rest}
+    />
+  );
+}
 
 // One page serves both modes: /songs/:songId/arrangements/new (create) and
 // /arrangements/:id/edit (edit). The section editor submits the whole
@@ -449,16 +487,13 @@ export function ArrangementEditorPage() {
             <div className="flex flex-col gap-3">
               {sections.map((section, i) => (
                 <div key={i} className="card p-4">
-                  <div className="mb-2 flex items-center gap-2">
-                    <input
-                      className="input flex-1 font-mono"
-                      aria-label={`Section ${i + 1} label`}
-                      value={section.label}
-                      disabled={!canEdit}
-                      onChange={(e) =>
-                        updateSection(i, { label: e.target.value })
-                      }
-                    />
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <label
+                      className="flabel mb-0"
+                      htmlFor={`section-${i}-label`}
+                    >
+                      Label
+                    </label>
                     {canEdit && (
                       <div className="flex shrink-0 gap-1">
                         <button
@@ -490,9 +525,21 @@ export function ArrangementEditorPage() {
                       </div>
                     )}
                   </div>
-                  <textarea
-                    className="input font-mono text-[12px]"
-                    rows={6}
+                  <input
+                    id={`section-${i}-label`}
+                    className="input mb-3 font-mono"
+                    aria-label={`Section ${i + 1} label`}
+                    value={section.label}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      updateSection(i, { label: e.target.value })
+                    }
+                  />
+                  <label className="flabel" htmlFor={`section-${i}-abc`}>
+                    ABC
+                  </label>
+                  <AutoTextarea
+                    id={`section-${i}-abc`}
                     aria-label={`Section ${i + 1} ABC content`}
                     placeholder={'X:1\nT:Title\nM:4/4\nK:G\nGAB c2B |'}
                     value={section.content}
