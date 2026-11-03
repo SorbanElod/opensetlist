@@ -371,6 +371,7 @@ export function SetlistViewPage() {
                         transposedKey={item.transposedKey}
                         view={view}
                         scale={scale}
+                        bare
                       />
                     </div>
                   );

@@ -28,6 +28,7 @@ export function ArrangementRenderer({
   transposedKey,
   view: viewProp,
   scale: scaleProp,
+  bare,
 }: {
   arrangement: Arrangement;
   // Optional control docked at the right end of the view-toggle row (the
@@ -42,6 +43,9 @@ export function ArrangementRenderer({
   // parent owns the toggle/zoom and the local controls are hidden.
   view?: ViewMode;
   scale?: number;
+  // bare: render the sections panel without its own .card — for pages that
+  // already wrap the renderer in a card (avoids concentric cards).
+  bare?: boolean;
 }) {
   const auth = useAuth();
 
@@ -224,7 +228,10 @@ export function ArrangementRenderer({
 
       {/* All sections in ONE panel with no separators — just whitespace;
           each section's label heading is the only structure. */}
-      <div className="card px-4 py-2" data-testid="arrangement-sections">
+      <div
+        className={bare ? undefined : 'card px-4 py-2'}
+        data-testid="arrangement-sections"
+      >
         {/* Text views: `zoom` scales text, labels and the spacing between
             sections; the width compensation keeps the card at its normal
             on-screen width (text wraps, nothing is cut off). Sheet view:
