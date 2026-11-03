@@ -10,6 +10,8 @@ import { renderAbc } from 'abcjs';
 import { renderApp } from '../test/renderApp';
 import { stubFetch } from '../test/fetchMock';
 import type { DefaultView } from '../api/auth';
+import { keyAtOffset, transposeAbc } from '../lib/transpose';
+import { sheetAbc } from '../lib/abcViews';
 
 const USER = {
   id: 'u1',
@@ -290,6 +292,41 @@ describe('ArrangementViewPage', () => {
     expect(screen.getByTestId('scaled-content').className).toContain(
       'overflow-x-auto',
     );
+  });
+
+  it('transposes live with +/- without touching the stored ABC', async () => {
+    stubApi('sheet');
+    renderApp('/arrangements/a1');
+
+    await waitFor(() => {
+      expect(vi.mocked(renderAbc).mock.calls.length).toBeGreaterThan(0);
+    });
+    // G + 1 semitone = Ab (KEYS spelling)
+    const expected = sheetAbc(transposeAbc(V1_ABC, 'G', keyAtOffset('G', 1)));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Transpose up' }));
+    await waitFor(() => {
+      expect(
+        vi.mocked(renderAbc).mock.calls.some((c) => String(c[1]) === expected),
+      ).toBe(true);
+    });
+    // the key readout shows the new key with the offset
+    expect(
+      screen.getByRole('group', { name: 'Transpose' }).textContent,
+    ).toContain('Ab');
+    expect(
+      screen.getByRole('group', { name: 'Transpose' }).textContent,
+    ).toContain('+1');
+
+    // back down: original ABC again
+    fireEvent.click(screen.getByRole('button', { name: 'Transpose down' }));
+    await waitFor(() => {
+      expect(
+        vi
+          .mocked(renderAbc)
+          .mock.calls.some((c) => String(c[1]) === sheetAbc(V1_ABC)),
+      ).toBe(true);
+    });
   });
 
   it('offers "Set as my default" when the view differs, and PATCHes /api/auth/me', async () => {

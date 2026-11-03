@@ -63,6 +63,28 @@ function transposeChord(chord: string, delta: number): string {
     .join('/');
 }
 
+// The key `semitones` away from `key`, spelled per the KEYS enum (wraps).
+// Used by the view's +/- transpose control.
+export function keyAtOffset(key: string, semitones: number): string {
+  const KEYS = [
+    'C',
+    'C#',
+    'D',
+    'Eb',
+    'E',
+    'F',
+    'F#',
+    'G',
+    'Ab',
+    'A',
+    'Bb',
+    'B',
+  ];
+  const i = KEYS.indexOf(key);
+  if (i < 0) return key;
+  return KEYS[(((i + semitones) % 12) + 12) % 12]!;
+}
+
 // Transpose an ABC source from one key to another. Returns the input
 // unchanged when either key is unknown or the delta is 0.
 export function transposeAbc(

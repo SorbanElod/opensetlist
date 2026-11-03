@@ -11,7 +11,7 @@ import {
   zoomStyle,
   type ViewMode,
 } from '../lib/abcViews';
-import { transposeAbc } from '../lib/transpose';
+import { keyAtOffset, transposeAbc } from '../lib/transpose';
 import { AbcRenderer } from './AbcRenderer';
 import { ChordChartView } from './ChordChartView';
 
@@ -76,6 +76,15 @@ export function ArrangementRenderer({
   const [scaleState, setScaleState] = useState(1);
   const view = viewProp ?? viewState;
   const scale = scaleProp ?? scaleState;
+
+  // Live transpose (view-side, never persisted here): semitone offset from
+  // the item's key (setlist override) or the arrangement's original key.
+  // Saving a transposition for a setlist item happens in the setlist detail
+  // editor (transposed_key override) — the view is live-only.
+  const [keyOffset, setKeyOffset] = useState(0);
+  const baseKey = transposedKey ?? arrangement.originalKey;
+  const effectiveKey =
+    keyOffset === 0 ? baseKey : keyAtOffset(baseKey, keyOffset);
   function zoomBy(delta: number) {
     setScaleState((s) =>
       Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round((s + delta) * 10) / 10)),
@@ -119,10 +128,12 @@ export function ArrangementRenderer({
   // same ABC at render time (see lib/abcViews).
   function renderSection(rawContent: string) {
     // Transposed key is applied at render time only — the stored ABC is
-    // never rewritten (issue #12).
-    const content = transposedKey
-      ? transposeAbc(rawContent, arrangement.originalKey, transposedKey)
-      : rawContent;
+    // never rewritten (issue #12). Live +/- offset composes with the
+    // setlist item's saved transposedKey.
+    const content =
+      effectiveKey !== arrangement.originalKey
+        ? transposeAbc(rawContent, arrangement.originalKey, effectiveKey)
+        : rawContent;
     // Sheet view: no zoom for now (abcjs responsive mode ignores its scale
     // param and CSS zoom truncates the staff — follow-up issue). Text views
     // scale via the compensated zoom wrapper around all sections.
@@ -217,6 +228,43 @@ export function ArrangementRenderer({
             </button>
           </div>
         )}
+        {/* Live transpose: +/- one semitone at a time, shown as the current
+            key. Live-only — the stored ABC and the arrangement's key are
+            never rewritten; persisting a key for a setlist item happens in
+            the setlist detail editor (transposed_key). */}
+        <div
+          className="inline-flex items-center rounded-md border border-border bg-bg p-0.5"
+          role="group"
+          aria-label="Transpose"
+        >
+          <button
+            type="button"
+            aria-label="Transpose down"
+            onClick={() => setKeyOffset((o) => o - 1)}
+            className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text"
+          >
+            <Minus size={13} />
+          </button>
+          <span
+            className="w-10 text-center font-mono text-[11px] tabular-nums text-muted"
+            title={`Key: ${effectiveKey}${keyOffset !== 0 ? ` (${keyOffset > 0 ? `+${keyOffset}` : keyOffset} from ${baseKey})` : ''}`}
+          >
+            {effectiveKey}
+            {keyOffset !== 0 && (
+              <span className="text-accent">
+                {keyOffset > 0 ? `+${keyOffset}` : keyOffset}
+              </span>
+            )}
+          </span>
+          <button
+            type="button"
+            aria-label="Transpose up"
+            onClick={() => setKeyOffset((o) => o + 1)}
+            className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text"
+          >
+            <Plus size={13} />
+          </button>
+        </div>
         {viewProp === undefined && !isDefault && (
           <button
             type="button"
