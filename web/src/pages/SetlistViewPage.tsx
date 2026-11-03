@@ -298,44 +298,49 @@ export function SetlistViewPage() {
                     return (
                       <div
                         key={item.id}
-                        className="card mb-3 flex items-start gap-2.5 p-4"
                         data-testid="setlist-view-item"
-                      >
-                        <StickyNote
-                          size={16}
-                          className="mt-0.5 shrink-0 text-accent"
-                        />
-                        <div className="min-w-0">
-                          <span className="font-mono text-[12px] text-subtle">
-                            {item.position}
-                          </span>
-                          <p className="whitespace-pre-wrap break-words text-[13.5px]">
-                            {item.notes}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  }
-                  return (
-                    <div
-                      key={item.id}
-                      className="card mb-3 p-5"
-                      data-testid="setlist-view-item"
-                    >
-                      {/* Item-level zoom wrapper for text views: the header
-                          (title, key badge, notes) scales together with the
-                          sections. Sheet view is excluded — a responsive SVG
-                          ignores CSS zoom; there the staff scales via abcjs's
-                          own scale param inside the renderer. */}
-                      <div
                         style={
                           view === 'sheet'
                             ? {}
                             : { zoom: scale, width: `${100 / scale}%` }
                         }
                       >
-                        <div className="mb-3 flex items-start justify-between gap-3">
+                        <div className="card mb-3 flex items-start gap-2.5 p-4">
+                          <StickyNote
+                            size={16}
+                            className="mt-0.5 shrink-0 text-accent"
+                          />
                           <div className="min-w-0">
+                            <span className="font-mono text-[12px] text-subtle">
+                              {item.position}
+                            </span>
+                            <p className="whitespace-pre-wrap break-words text-[13.5px]">
+                              {item.notes}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    // Zoom wrapper OUTSIDE the card in text views: the whole
+                    // card (header, key badge, notes, sections) scales as one
+                    // unit and stays within the page width (width
+                    // compensation). Sheet view is excluded — a responsive SVG
+                    // ignores CSS zoom; there the staff scales via abcjs's own
+                    // scale param inside the renderer.
+                    <div
+                      key={item.id}
+                      data-testid="setlist-view-item"
+                      style={
+                        view === 'sheet'
+                          ? {}
+                          : { zoom: scale, width: `${100 / scale}%` }
+                      }
+                    >
+                      <div className="card mb-3 p-5">
+                        <div className="mb-3 flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
                             <div className="flex items-baseline gap-2">
                               <span className="font-mono text-[12px] text-subtle">
                                 {item.position}

@@ -250,9 +250,9 @@ describe('SetlistViewPage', () => {
     const { container } = renderApp('/setlists/sl1/view');
 
     await screen.findByText(/Amazing Grace — Default/);
-    // Default view is chords: the item card's zoom wrapper starts at 100%.
+    // Default view is chords: the item wrapper (outside the card) starts at 100%.
     const itemWrapper = container.querySelector(
-      '[data-testid="setlist-view-item"] > div',
+      '[data-testid="setlist-view-item"]',
     )!;
     expect(itemWrapper.getAttribute('style')).toMatch(/zoom:\s*1(;|$)/);
 
