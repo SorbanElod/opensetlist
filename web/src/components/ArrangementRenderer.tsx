@@ -8,6 +8,7 @@ import {
   lyricsText,
   orderedSections,
   sheetAbc,
+  zoomStyle,
   type ViewMode,
 } from '../lib/abcViews';
 import { transposeAbc } from '../lib/transpose';
@@ -255,9 +256,7 @@ export function ArrangementRenderer({
         <div
           className={view === 'sheet' ? 'overflow-x-auto' : undefined}
           style={
-            view === 'sheet' || applyZoom === false
-              ? {}
-              : { zoom: scale, width: `${100 / scale}%` }
+            view === 'sheet' || applyZoom === false ? {} : zoomStyle(scale)
           }
           data-testid="scaled-content"
         >

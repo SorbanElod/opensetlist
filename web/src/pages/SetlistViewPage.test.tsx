@@ -257,9 +257,18 @@ describe('SetlistViewPage', () => {
     expect(itemWrapper.getAttribute('style')).toMatch(/zoom:\s*1(;|$)/);
 
     fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
-    // The wrapper holding header + notes + sections scales together.
+    // The wrapper holding header + notes + sections scales together, with
+    // width compensation so the card keeps its on-screen width.
     expect(itemWrapper.getAttribute('style')).toContain('zoom: 1.1');
+    expect(itemWrapper.getAttribute('style')).toContain('width:');
     expect(screen.getByText('Start slow')).toBeTruthy();
+
+    // Zooming out: no width compensation — the card shrinks instead of
+    // staying full-width with tiny text.
+    const out = screen.getByRole('button', { name: 'Zoom out' });
+    for (let i = 0; i < 6; i++) fireEvent.click(out);
+    expect(itemWrapper.getAttribute('style')).toContain('zoom: 0.5');
+    expect(itemWrapper.getAttribute('style')).not.toContain('width:');
   });
 
   it('zooms the sheet view through the abcjs scale param', async () => {

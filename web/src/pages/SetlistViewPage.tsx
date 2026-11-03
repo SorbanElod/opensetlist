@@ -22,7 +22,7 @@ import { getSetlist, type SetlistDetail } from '../api/setlists';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 import { ArrangementRenderer } from '../components/ArrangementRenderer';
 import { PageHeader } from '../components/PageHeader';
-import type { ViewMode } from '../lib/abcViews';
+import { zoomStyle, type ViewMode } from '../lib/abcViews';
 
 // On-stage setlist view (issue #62): every item in position order on one
 // page. Arrangement items render through the shared ArrangementRenderer with
@@ -299,11 +299,7 @@ export function SetlistViewPage() {
                       <div
                         key={item.id}
                         data-testid="setlist-view-item"
-                        style={
-                          view === 'sheet'
-                            ? {}
-                            : { zoom: scale, width: `${100 / scale}%` }
-                        }
+                        style={view === 'sheet' ? {} : zoomStyle(scale)}
                       >
                         <div className="card mb-3 flex items-start gap-2.5 p-4">
                           <StickyNote
@@ -332,11 +328,7 @@ export function SetlistViewPage() {
                     <div
                       key={item.id}
                       data-testid="setlist-view-item"
-                      style={
-                        view === 'sheet'
-                          ? {}
-                          : { zoom: scale, width: `${100 / scale}%` }
-                      }
+                      style={view === 'sheet' ? {} : zoomStyle(scale)}
                     >
                       <div className="card mb-3 p-5">
                         <div className="mb-3 flex items-start justify-between gap-3">
