@@ -2,12 +2,21 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 
 import { hashPassword } from '../src/auth/service.js';
 import { loadEnv } from '../src/config.js';
 import { buildDb, type Db } from '../src/db/index.js';
-import { groupMembers, groups, songs, tags, users } from '../src/db/schema.js';
+import {
+  arrangements,
+  groupMembers,
+  groups,
+  setlists,
+  songs,
+  tags,
+  users,
+} from '../src/db/schema.js';
+import { addItem, createSetlist } from '../src/setlists/service.js';
 import { importSongsSchema } from '../src/songs/schemas.js';
 import { getSingleGroupId, importSongs } from '../src/songs/service.js';
 
@@ -75,10 +84,74 @@ export async function ensureDevAdmin(db: Db): Promise<string> {
 }
 
 // Dev-only library reset: delete the group's songs (arrangements and
-// song_tags cascade) and its tag vocabulary. Users/sessions are untouched.
+// song_tags cascade), its setlists (items cascade), and its tag vocabulary.
+// Users/sessions are untouched.
 export async function clearGroupLibrary(db: Db, groupId: string) {
   await db.delete(songs).where(eq(songs.groupId, groupId));
+  await db.delete(setlists).where(eq(setlists.groupId, groupId));
   await db.delete(tags).where(eq(tags.groupId, groupId));
+}
+
+// Next Sunday as YYYY-MM-DD — the demo setlist's event date.
+function nextSunday(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + ((7 - d.getDay()) % 7 || 7));
+  return d.toISOString().slice(0, 10);
+}
+
+// One demo setlist from the first imported arrangements: a key override, a
+// note-only row, and a custom sequence, so every item feature is visible.
+// Goes through the same service functions as the API, so validation applies.
+async function seedDemoSetlist(db: Db, groupId: string) {
+  const rows = await db
+    .select({
+      id: arrangements.id,
+      originalKey: arrangements.originalKey,
+      defaultSequence: arrangements.defaultSequence,
+    })
+    .from(arrangements)
+    .innerJoin(songs, eq(arrangements.songId, songs.id))
+    .where(eq(songs.groupId, groupId))
+    .orderBy(asc(arrangements.createdAt))
+    .limit(3);
+  if (rows.length === 0) return { setlists: 0, setlistItems: 0 };
+
+  const setlist = await createSetlist(db, {
+    groupId,
+    setlist: { title: 'Sunday service (demo)', eventDate: nextSunday() },
+  });
+
+  let version = setlist.version;
+  let itemCount = 0;
+  const add = async (item: Parameters<typeof addItem>[1]['item']) => {
+    const result = await addItem(db, {
+      groupId,
+      setlistId: setlist.id,
+      item: { ...item, version },
+    });
+    if (!result.ok)
+      throw new Error(`Demo setlist item rejected: ${result.reason}`);
+    version = result.setlistVersion;
+    itemCount += 1;
+  };
+
+  const [first, second, third] = rows;
+  // Key override: transpose to D (or C if the original already is D).
+  await add({
+    arrangementId: first!.id,
+    transposedKey: first!.originalKey === 'D' ? 'C' : 'D',
+  });
+  await add({ arrangementId: null, notes: 'Welcome & announcements — 10 min' });
+  if (second) {
+    // Custom sequence: the arrangement's default, reversed (labels are valid).
+    await add({
+      arrangementId: second.id,
+      customSequence: [...second.defaultSequence].reverse(),
+    });
+  }
+  if (third) await add({ arrangementId: third.id });
+
+  return { setlists: 1, setlistItems: itemCount };
 }
 
 // Wipe + import the curated public-domain seed, after ensuring the
@@ -98,11 +171,14 @@ export async function seedDev(db: Db) {
     ownerId,
     data,
   });
+  const demo = await seedDemoSetlist(db, groupId);
 
   return {
     songs: result.songs.length,
     arrangements: result.arrangementsImported,
     tags: result.tagsImported,
+    setlists: demo.setlists,
+    setlistItems: demo.setlistItems,
   };
 }
 
@@ -119,7 +195,7 @@ async function main() {
   try {
     const counts = await seedDev(db);
     console.log(
-      `Seeded dev database: ${counts.songs} songs, ${counts.arrangements} arrangements, ${counts.tags} tag links (from ${SEED_FILE})`,
+      `Seeded dev database: ${counts.songs} songs, ${counts.arrangements} arrangements, ${counts.tags} tag links, ${counts.setlists} setlist with ${counts.setlistItems} items (from ${SEED_FILE})`,
     );
     console.log(
       `Dev admin login: ${DEV_ADMIN.email} / ${DEV_ADMIN.password} (group_manager)`,

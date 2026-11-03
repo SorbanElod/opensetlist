@@ -16,6 +16,8 @@ import { verifyPassword } from '../src/auth/service.js';
 import {
   arrangements,
   groupMembers,
+  setlistItems,
+  setlists,
   songs,
   tags,
   users,
@@ -124,6 +126,8 @@ describe.skipIf(!dbUrl)('seedDev / clearGroupLibrary', () => {
     const first = await seedDev(db);
     expect(first.songs).toBeGreaterThanOrEqual(12);
     expect(first.arrangements).toBeGreaterThanOrEqual(12);
+    expect(first.setlists).toBe(1);
+    expect(first.setlistItems).toBeGreaterThanOrEqual(3);
 
     const [admin] = await db
       .select()
@@ -146,19 +150,61 @@ describe.skipIf(!dbUrl)('seedDev / clearGroupLibrary', () => {
       const rows = await db.select({ n: count() }).from(arrangements);
       return rows[0]?.n ?? 0;
     };
+    const setlistCount = async () => {
+      const rows = await db
+        .select({ n: count() })
+        .from(setlists)
+        .where(eq(setlists.groupId, groupId));
+      return rows[0]?.n ?? 0;
+    };
+    const itemCount = async () => {
+      const rows = await db.select({ n: count() }).from(setlistItems);
+      return rows[0]?.n ?? 0;
+    };
 
     expect(await songCount()).toBe(first.songs);
     expect(await arrangementCount()).toBe(first.arrangements);
+    expect(await setlistCount()).toBe(1);
+    expect(await itemCount()).toBe(first.setlistItems);
+
+    // The demo setlist exercises every item kind: arrangement items with a
+    // key override / custom sequence, and a note-only row.
+    const demoItems = await db
+      .select()
+      .from(setlistItems)
+      .innerJoin(setlists, eq(setlistItems.setlistId, setlists.id))
+      .where(eq(setlists.groupId, groupId))
+      .orderBy(setlistItems.position);
+    expect(
+      demoItems.some(
+        (r) => r.setlist_items.arrangementId === null && r.setlist_items.notes,
+      ),
+    ).toBe(true);
+    expect(demoItems.some((r) => r.setlist_items.transposedKey !== null)).toBe(
+      true,
+    );
+    expect(
+      demoItems.some((r) => (r.setlist_items.customSequence?.length ?? 0) > 0),
+    ).toBe(true);
+    // Positions are contiguous 1..n.
+    expect(demoItems.map((r) => r.setlist_items.position)).toEqual(
+      demoItems.map((_, i) => i + 1),
+    );
 
     // Re-running replaces, not appends.
     const second = await seedDev(db);
     expect(await songCount()).toBe(second.songs);
     expect(second.songs).toBe(first.songs);
+    expect(await setlistCount()).toBe(1);
+    expect(await itemCount()).toBe(second.setlistItems);
 
-    // Clear empties the library (arrangements cascade with their songs).
+    // Clear empties the library (arrangements cascade with their songs;
+    // setlist items cascade with their setlist).
     await clearGroupLibrary(db, groupId);
     expect(await songCount()).toBe(0);
     expect(await arrangementCount()).toBe(0);
+    expect(await setlistCount()).toBe(0);
+    expect(await itemCount()).toBe(0);
     const tagRows = await db
       .select({ n: count() })
       .from(tags)

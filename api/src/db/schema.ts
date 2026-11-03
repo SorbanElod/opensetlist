@@ -225,7 +225,10 @@ export const setlists = pgTable(
 // Setlist items: child table (never an embedded array). position is unique
 // per setlist, so ordering is unambiguous. Deleting a song removes its
 // arrangements and thus their items (cascade) — chosen over failing the
-// delete with a confusing error.
+// delete with a confusing error. arrangement_id is nullable: a row without
+// one is a free-text note item (issue #12), with notes required then.
+// custom_sequence is text[] like arrangements.default_sequence — it holds
+// section labels (P3.1 migration changed it from text).
 export const setlistItems = pgTable(
   'setlist_items',
   {
@@ -234,11 +237,11 @@ export const setlistItems = pgTable(
       .notNull()
       .references(() => setlists.id, { onDelete: 'cascade' }),
     position: integer('position').notNull(),
-    arrangementId: uuid('arrangement_id')
-      .notNull()
-      .references(() => arrangements.id, { onDelete: 'cascade' }),
+    arrangementId: uuid('arrangement_id').references(() => arrangements.id, {
+      onDelete: 'cascade',
+    }),
     transposedKey: text('transposed_key'),
-    customSequence: text('custom_sequence'),
+    customSequence: text('custom_sequence').array(),
     notes: text('notes'),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
