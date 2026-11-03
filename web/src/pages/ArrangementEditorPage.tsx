@@ -33,7 +33,7 @@ import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 import { AbcRenderer } from '../components/AbcRenderer';
 import { PageHeader } from '../components/PageHeader';
 import { Popover } from '../components/Popover';
-import { orderedSections } from '../lib/abcViews';
+import { orderedSections, sheetAbc } from '../lib/abcViews';
 
 // Textarea that grows with its content (rows=1, height = scrollHeight): the
 // page scrolls, never an inner scrollbar — nested scrolling panels in the
@@ -574,8 +574,9 @@ export function ArrangementEditorPage() {
                       {s.label || `Section ${i + 1}`}
                     </h2>
                     {/* debounceMs: live preview re-renders ~200ms after the
-                        last keystroke */}
-                    <AbcRenderer abc={s.content} debounceMs={200} />
+                        last keystroke. sheetAbc strips T:/C: so title/author
+                        are not repeated inside every section. */}
+                    <AbcRenderer abc={sheetAbc(s.content)} debounceMs={200} />
                   </section>
                 ))}
               </div>
