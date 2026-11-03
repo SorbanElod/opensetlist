@@ -1301,6 +1301,508 @@
           ]
         }
       ]
+    },
+    {
+      "name": "setlists",
+      "item": [
+        {
+          "name": "List setlists",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/setlists",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "setlists"]
+            },
+            "description": "Any role incl. reader. Newest first; itemCount is included."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"setlists\": [\n    {\n      \"id\": \"1f4d3c2b-4444-4fff-8aaa-000000000010\",\n      \"groupId\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n      \"title\": \"Sunday service\",\n      \"eventDate\": \"2026-12-24\",\n      \"version\": 3,\n      \"createdAt\": \"2026-12-01T10:00:00.000Z\",\n      \"itemCount\": 5\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create setlist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 + setlistId saved', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.collectionVariables.set('setlistId', pm.response.json().setlist.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/setlists",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "setlists"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Sunday service\",\n  \"eventDate\": \"2026-12-24\"\n}"
+            },
+            "description": "member+ only (403 for readers). eventDate is an optional YYYY-MM-DD."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"setlist\": {\n    \"id\": \"1f4d3c2b-4444-4fff-8aaa-000000000010\",\n    \"groupId\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n    \"title\": \"Sunday service\",\n    \"eventDate\": \"2026-12-24\",\n    \"version\": 1,\n    \"createdAt\": \"2026-12-01T10:00:00.000Z\",\n    \"itemCount\": 0\n  }\n}"
+            },
+            {
+              "name": "400 Invalid input",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Invalid input\",\n  \"issues\": [\n    {\n      \"path\": \"title\",\n      \"message\": \"Title is required\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get setlist detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/setlists/{{setlistId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "setlists", "{{setlistId}}"]
+            },
+            "description": "Any role. Items are ordered by position and resolved: arrangement + effectiveSequence (customSequence override, else the arrangement defaultSequence; null on note-only rows)."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"setlist\": {\n    \"id\": \"1f4d3c2b-4444-4fff-8aaa-000000000010\",\n    \"groupId\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n    \"title\": \"Sunday service\",\n    \"eventDate\": \"2026-12-24\",\n    \"version\": 3,\n    \"createdAt\": \"2026-12-01T10:00:00.000Z\",\n    \"itemCount\": 2\n  },\n  \"items\": [\n    {\n      \"id\": \"2a4d3c2b-4444-4fff-8aaa-000000000020\",\n      \"setlistId\": \"1f4d3c2b-4444-4fff-8aaa-000000000010\",\n      \"position\": 1,\n      \"arrangementId\": \"3b4d3c2b-4444-4fff-8aaa-000000000030\",\n      \"transposedKey\": \"D\",\n      \"customSequence\": null,\n      \"notes\": null,\n      \"createdAt\": \"2026-12-01T10:05:00.000Z\",\n      \"arrangement\": {\n        \"id\": \"3b4d3c2b-4444-4fff-8aaa-000000000030\",\n        \"title\": \"Default\",\n        \"songId\": \"5e4d3c2b-4444-4fff-8aaa-000000000001\",\n        \"songTitle\": \"Amazing Grace\",\n        \"originalKey\": \"G\",\n        \"sectionLabels\": [\"V1\", \"C1\"],\n        \"defaultSequence\": [\"V1\", \"C1\", \"V1\"]\n      },\n      \"effectiveSequence\": [\"V1\", \"C1\", \"V1\"]\n    },\n    {\n      \"id\": \"2a4d3c2b-4444-4fff-8aaa-000000000021\",\n      \"setlistId\": \"1f4d3c2b-4444-4fff-8aaa-000000000010\",\n      \"position\": 2,\n      \"arrangementId\": null,\n      \"transposedKey\": null,\n      \"customSequence\": null,\n      \"notes\": \"Soundcheck at 9:00\",\n      \"createdAt\": \"2026-12-01T10:06:00.000Z\",\n      \"arrangement\": null,\n      \"effectiveSequence\": null\n    }\n  ]\n}"
+            },
+            {
+              "name": "404 Not found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Setlist not found\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update setlist",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/setlists/{{setlistId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "setlists", "{{setlistId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Sunday service (late)\",\n  \"version\": 3\n}"
+            },
+            "description": "member+. version is the optimistic-locking check: send the version you last saw; a stale one returns 409."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"setlist\": {\n    \"id\": \"1f4d3c2b-4444-4fff-8aaa-000000000010\",\n    \"groupId\": \"b7d8f9a0-1111-4bbb-8ccc-000000000001\",\n    \"title\": \"Sunday service (late)\",\n    \"eventDate\": \"2026-12-24\",\n    \"version\": 4,\n    \"createdAt\": \"2026-12-01T10:00:00.000Z\",\n    \"itemCount\": 2\n  }\n}"
+            },
+            {
+              "name": "409 Conflict",
+              "status": "Conflict",
+              "code": 409,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Setlist was modified by someone else — reload and try again\"\n}"
+            },
+            {
+              "name": "404 Not found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Setlist not found\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete setlist",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/setlists/{{setlistId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "setlists", "{{setlistId}}"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": 4\n}"
+            },
+            "description": "member+. Items cascade. Stale version -> 409."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"status\": \"ok\"\n}"
+            },
+            {
+              "name": "409 Conflict",
+              "status": "Conflict",
+              "code": 409,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Setlist was modified by someone else — reload and try again\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Add arrangement item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('201 + itemId saved', () => {",
+                  "  pm.response.to.have.status(201);",
+                  "  pm.collectionVariables.set('itemId', pm.response.json().item.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/setlists/{{setlistId}}/items",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "setlists", "{{setlistId}}", "items"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"arrangementId\": \"{{arrangementId}}\",\n  \"transposedKey\": \"D\",\n  \"version\": 4\n}"
+            },
+            "description": "member+. Appended at the end. transposedKey/customSequence/notes are optional; customSequence entries must be section labels of the arrangement (400 otherwise). Use arrangementId: null + notes for a note-only row."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"item\": {\n    \"id\": \"2a4d3c2b-4444-4fff-8aaa-000000000020\",\n    \"setlistId\": \"1f4d3c2b-4444-4fff-8aaa-000000000010\",\n    \"position\": 3,\n    \"arrangementId\": \"3b4d3c2b-4444-4fff-8aaa-000000000030\",\n    \"transposedKey\": \"D\",\n    \"customSequence\": null,\n    \"notes\": null,\n    \"createdAt\": \"2026-12-01T10:05:00.000Z\",\n    \"arrangement\": {\n      \"songTitle\": \"Amazing Grace\",\n      \"sectionLabels\": [\"V1\", \"C1\"]\n    },\n    \"effectiveSequence\": [\"V1\", \"C1\", \"V1\"]\n  },\n  \"setlistVersion\": 5\n}"
+            },
+            {
+              "name": "400 Invalid input",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Custom sequence entries must be existing section labels of the arrangement\"\n}"
+            },
+            {
+              "name": "409 Conflict",
+              "status": "Conflict",
+              "code": 409,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Setlist was modified by someone else — reload and try again\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Add note-only item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/setlists/{{setlistId}}/items",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "setlists", "{{setlistId}}", "items"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"arrangementId\": null,\n  \"notes\": \"Offering during the last song\",\n  \"version\": 5\n}"
+            },
+            "description": "Note-only row: arrangementId null and notes required (400 otherwise); no key/sequence overrides allowed."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"item\": {\n    \"id\": \"2a4d3c2b-4444-4fff-8aaa-000000000021\",\n    \"setlistId\": \"1f4d3c2b-4444-4fff-8aaa-000000000010\",\n    \"position\": 4,\n    \"arrangementId\": null,\n    \"transposedKey\": null,\n    \"customSequence\": null,\n    \"notes\": \"Offering during the last song\",\n    \"createdAt\": \"2026-12-01T10:06:00.000Z\",\n    \"arrangement\": null,\n    \"effectiveSequence\": null\n  },\n  \"setlistVersion\": 6\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update item",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/setlists/{{setlistId}}/items/{{itemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "setlists",
+                "{{setlistId}}",
+                "items",
+                "{{itemId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customSequence\": [\"C1\", \"C1\", \"V1\"],\n  \"notes\": \"capo 3\",\n  \"version\": 6\n}"
+            },
+            "description": "member+. Partial update; the merged row is re-validated (note-only rules, customSequence against section labels)."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"item\": {\n    \"id\": \"2a4d3c2b-4444-4fff-8aaa-000000000020\",\n    \"customSequence\": [\"C1\", \"C1\", \"V1\"],\n    \"notes\": \"capo 3\",\n    \"effectiveSequence\": [\"C1\", \"C1\", \"V1\"]\n  },\n  \"setlistVersion\": 7\n}"
+            },
+            {
+              "name": "400 Invalid input",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Custom sequence entries must be existing section labels of the arrangement\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Move item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/setlists/{{setlistId}}/items/{{itemId}}/move",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "setlists",
+                "{{setlistId}}",
+                "items",
+                "{{itemId}}",
+                "move"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"direction\": \"up\",\n  \"version\": 7\n}"
+            },
+            "description": "member+. Swaps with the neighbor (positions renumber 1..n); returns the full resolved items list. Moving past an end is a no-op."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"items\": [\n    { \"id\": \"...\", \"position\": 1, \"...\": \"...\" }\n  ],\n  \"setlistVersion\": 8\n}"
+            }
+          ]
+        },
+        {
+          "name": "Delete item",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/setlists/{{setlistId}}/items/{{itemId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "api",
+                "setlists",
+                "{{setlistId}}",
+                "items",
+                "{{itemId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"version\": 8\n}"
+            },
+            "description": "member+. Remaining items renumber to 1..n; returns the full resolved items list."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"items\": [],\n  \"setlistVersion\": 9\n}"
+            },
+            {
+              "name": "404 Not found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "body": "{\n  \"message\": \"Not found\"\n}"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

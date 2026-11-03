@@ -32,9 +32,7 @@ function invalidInput(reply: FastifyReply, error: ZodError) {
 
 function itemError(
   reply: FastifyReply,
-  result:
-    | { ok: false; reason: string; message?: string }
-    | { ok: true },
+  result: { ok: false; reason: string; message?: string } | { ok: true },
 ) {
   if (result.ok) return null;
   if (result.reason === 'not_found') {
@@ -56,10 +54,14 @@ export const setlistsRoutes: FastifyPluginAsync<SetlistsOptions> = async (
 ) => {
   // Readers see the group's setlists (like the song library); only members+
   // mutate them.
-  app.get('/api/setlists', { preHandler: authorize(db, 'reader') }, async () => {
-    const groupId = await getSingleGroupId(db);
-    return { setlists: await setlists.listSetlists(db, groupId) };
-  });
+  app.get(
+    '/api/setlists',
+    { preHandler: authorize(db, 'reader') },
+    async () => {
+      const groupId = await getSingleGroupId(db);
+      return { setlists: await setlists.listSetlists(db, groupId) };
+    },
+  );
 
   app.post(
     '/api/setlists',

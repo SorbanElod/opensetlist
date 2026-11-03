@@ -199,7 +199,9 @@ describe.skipIf(!dbUrl)('setlists routes', () => {
       url: '/api/setlists',
       cookies: cookies(token),
     });
-    expect(list.json().setlists.some((s: { id: string }) => s.id === setlist.id)).toBe(true);
+    expect(
+      list.json().setlists.some((s: { id: string }) => s.id === setlist.id),
+    ).toBe(true);
 
     const detail = await getDetail(token, setlist.id);
     expect(detail.setlist.id).toBe(setlist.id);
@@ -281,7 +283,11 @@ describe.skipIf(!dbUrl)('setlists routes', () => {
     const note = await app.inject({
       method: 'POST',
       url,
-      payload: { arrangementId: null, notes: 'Soundcheck at 9:00', version: v2 },
+      payload: {
+        arrangementId: null,
+        notes: 'Soundcheck at 9:00',
+        version: v2,
+      },
       cookies: cookies(token),
     });
     expect(note.statusCode).toBe(201);

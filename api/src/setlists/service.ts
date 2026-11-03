@@ -110,7 +110,8 @@ function toItemArrangement(row: {
 
 function toResolved(row: {
   item: SetlistItemView;
-  arrangement: (typeof arrangements.$inferSelect & { songTitle?: string }) | null;
+  arrangement:
+    (typeof arrangements.$inferSelect & { songTitle?: string }) | null;
   songTitle: string | null;
 }): ResolvedItem {
   const { item } = row;
@@ -268,7 +269,10 @@ export async function listSetlists(
       eventDate: setlists.eventDate,
       version: setlists.version,
       createdAt: setlists.createdAt,
-      itemCount: sql<number>`(select count(*) from ${setlistItems} where ${setlistItems.setlistId} = ${setlists.id})`.mapWith(Number),
+      itemCount:
+        sql<number>`(select count(*) from ${setlistItems} where ${setlistItems.setlistId} = ${setlists.id})`.mapWith(
+          Number,
+        ),
     })
     .from(setlists)
     .where(eq(setlists.groupId, groupId))
@@ -318,7 +322,9 @@ export async function updateSetlist(
   const { version, ...fields } = input.setlist;
 
   return db.transaction(async (tx) => {
-    const set: Record<string, unknown> = { version: sql`${setlists.version} + 1` };
+    const set: Record<string, unknown> = {
+      version: sql`${setlists.version} + 1`,
+    };
     for (const [key, value] of Object.entries(fields)) {
       if (value === undefined) continue;
       set[key] = value;
@@ -378,7 +384,9 @@ export async function deleteSetlist(
     const [existing] = await db
       .select({ id: setlists.id })
       .from(setlists)
-      .where(and(eq(setlists.id, input.id), eq(setlists.groupId, input.groupId)))
+      .where(
+        and(eq(setlists.id, input.id), eq(setlists.groupId, input.groupId)),
+      )
       .limit(1);
     return { ok: false, reason: existing ? 'conflict' : 'not_found' };
   }
@@ -401,7 +409,10 @@ export async function addItem(
         fields.arrangementId,
       );
       if (!arrangement) {
-        return { ok: false, reason: 'invalid_arrangement' } satisfies ItemResult;
+        return {
+          ok: false,
+          reason: 'invalid_arrangement',
+        } satisfies ItemResult;
       }
     }
 
@@ -412,7 +423,8 @@ export async function addItem(
       notes: fields.notes ?? null,
     };
     const itemError = validateItem(merged);
-    if (itemError) return { ok: false, reason: 'invalid_item', message: itemError };
+    if (itemError)
+      return { ok: false, reason: 'invalid_item', message: itemError };
     if (
       arrangement &&
       !validateCustomSequence(merged.customSequence, arrangement.arrangement)
@@ -425,7 +437,12 @@ export async function addItem(
       } satisfies ItemResult;
     }
 
-    const locked = await lockSetlist(tx, input.groupId, input.setlistId, version);
+    const locked = await lockSetlist(
+      tx,
+      input.groupId,
+      input.setlistId,
+      version,
+    );
     if (!locked.ok) return locked;
 
     const [maxPos] = await tx
@@ -474,7 +491,8 @@ export async function updateItem(
         ),
       )
       .limit(1);
-    if (!existing) return { ok: false, reason: 'not_found' } satisfies ItemResult;
+    if (!existing)
+      return { ok: false, reason: 'not_found' } satisfies ItemResult;
 
     // Merge with the existing row: PATCH sends only changed fields, and the
     // note-only / sequence rules apply to the merged result.
@@ -496,14 +514,22 @@ export async function updateItem(
 
     let arrangement: Awaited<ReturnType<typeof getGroupArrangement>> = null;
     if (merged.arrangementId) {
-      arrangement = await getGroupArrangement(tx, input.groupId, merged.arrangementId);
+      arrangement = await getGroupArrangement(
+        tx,
+        input.groupId,
+        merged.arrangementId,
+      );
       if (!arrangement) {
-        return { ok: false, reason: 'invalid_arrangement' } satisfies ItemResult;
+        return {
+          ok: false,
+          reason: 'invalid_arrangement',
+        } satisfies ItemResult;
       }
     }
 
     const itemError = validateItem(merged);
-    if (itemError) return { ok: false, reason: 'invalid_item', message: itemError };
+    if (itemError)
+      return { ok: false, reason: 'invalid_item', message: itemError };
     if (
       arrangement &&
       !validateCustomSequence(merged.customSequence, arrangement.arrangement)
@@ -517,7 +543,12 @@ export async function updateItem(
     }
 
     // Validate first (reads only): a 400 must not consume a version bump.
-    const locked = await lockSetlist(tx, input.groupId, input.setlistId, version);
+    const locked = await lockSetlist(
+      tx,
+      input.groupId,
+      input.setlistId,
+      version,
+    );
     if (!locked.ok) return locked;
 
     const [updated] = await tx
@@ -540,7 +571,12 @@ export async function updateItem(
 
 export async function deleteItem(
   db: Db,
-  input: { groupId: string; setlistId: string; itemId: string; version: number },
+  input: {
+    groupId: string;
+    setlistId: string;
+    itemId: string;
+    version: number;
+  },
 ): Promise<ItemsResult | { ok: false; reason: 'not_found' | 'conflict' }> {
   return db.transaction(async (tx) => {
     const [existing] = await tx
@@ -555,12 +591,15 @@ export async function deleteItem(
       .limit(1);
     if (!existing) return { ok: false, reason: 'not_found' };
 
-    const locked = await lockSetlist(tx, input.groupId, input.setlistId, input.version);
+    const locked = await lockSetlist(
+      tx,
+      input.groupId,
+      input.setlistId,
+      input.version,
+    );
     if (!locked.ok) return locked;
 
-    await tx
-      .delete(setlistItems)
-      .where(eq(setlistItems.id, input.itemId));
+    await tx.delete(setlistItems).where(eq(setlistItems.id, input.itemId));
     await renumberPositions(tx, input.setlistId);
 
     const items = await listResolvedItems(tx, input.setlistId);
@@ -592,7 +631,12 @@ export async function moveItem(
     const index = rows.findIndex((r) => r.id === input.itemId);
     if (index === -1) return { ok: false, reason: 'not_found' };
 
-    const locked = await lockSetlist(tx, input.groupId, input.setlistId, input.version);
+    const locked = await lockSetlist(
+      tx,
+      input.groupId,
+      input.setlistId,
+      input.version,
+    );
     if (!locked.ok) return locked;
 
     const swapWith = input.direction === 'up' ? index - 1 : index + 1;
