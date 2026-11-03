@@ -29,7 +29,7 @@ const SONG = {
   ownerId: 'u1',
   version: 1,
   createdAt: '2026-10-28T10:00:00.000Z',
-  tags: [],
+  tags: ['easter', 'public-domain'],
 };
 
 const V1_ABC = 'X:1\nK:G\n"G"G2 A2 | "C"c2 B2 |\nw: a-ma-zing grace';
@@ -97,6 +97,15 @@ afterEach(() => {
 });
 
 describe('SongDetailPage (issue #51: inline default arrangement)', () => {
+  it('shows the song tags as chips in the metadata', async () => {
+    stubApi();
+    renderApp('/songs/s1');
+
+    expect(await screen.findByText('easter')).toBeTruthy();
+    expect(screen.getByText('public-domain')).toBeTruthy();
+    expect(screen.getByText('Tags')).toBeTruthy();
+  });
+
   it('renders the newest arrangement inline — sections in play order, no click-through', async () => {
     const fn = stubApi();
     renderApp('/songs/s1');

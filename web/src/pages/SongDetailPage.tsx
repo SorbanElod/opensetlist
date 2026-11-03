@@ -9,6 +9,7 @@ import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 import { ArrangementRenderer } from '../components/ArrangementRenderer';
 import { EmptyState } from '../components/EmptyState';
 import { ListRow } from '../components/ListRow';
+import { TagChip } from '../components/TagChip';
 
 export function SongDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -158,6 +159,17 @@ export function SongDetailPage() {
               </dd>
             </div>
           </dl>
+
+          <div className="mt-3">
+            <dt className="flabel">Tags</dt>
+            <dd className="flex flex-wrap gap-1">
+              {song.tags.length > 0 ? (
+                song.tags.map((t) => <TagChip key={t} name={t} />)
+              ) : (
+                <span className="text-[13px] text-muted">—</span>
+              )}
+            </dd>
+          </div>
 
           {/* Issue #51: the newest arrangement renders inline, right below
               the metadata — no click-through to the on-stage page. All
