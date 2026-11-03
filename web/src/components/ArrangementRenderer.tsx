@@ -14,6 +14,7 @@ import {
 import { keyAtOffset, transposeAbc } from '../lib/transpose';
 import { AbcRenderer } from './AbcRenderer';
 import { ChordChartView } from './ChordChartView';
+import { TransposeControl } from './TransposeControl';
 
 // One render pipeline for an arrangement's sections (issues #10, #51), used
 // by the on-stage page (/arrangements/:id), inline on the song detail page,
@@ -32,7 +33,13 @@ export function ArrangementRenderer({
   bare,
   applyZoom,
   debounceMs,
+  keyOffset: keyOffsetProp,
+  onKeyOffsetChange,
 }: {
+  // Controlled transpose (setlist view): when keyOffset is passed, the parent
+  // owns the +/- control and the renderer hides its own.
+  keyOffset?: number;
+  onKeyOffsetChange?: (offset: number) => void;
   // debounceMs for the sheet view's abcjs render (editor live preview: 200ms
   // so long sections don't re-render on every keystroke).
   debounceMs?: number;
@@ -81,7 +88,9 @@ export function ArrangementRenderer({
   // the item's key (setlist override) or the arrangement's original key.
   // Saving a transposition for a setlist item happens in the setlist detail
   // editor (transposed_key override) — the view is live-only.
-  const [keyOffset, setKeyOffset] = useState(0);
+  const [keyOffsetState, setKeyOffsetState] = useState(0);
+  const keyOffset = keyOffsetProp ?? keyOffsetState;
+  const setKeyOffset = onKeyOffsetChange ?? setKeyOffsetState;
   const baseKey = transposedKey ?? arrangement.originalKey;
   const effectiveKey =
     keyOffset === 0 ? baseKey : keyAtOffset(baseKey, keyOffset);
@@ -162,123 +171,101 @@ export function ArrangementRenderer({
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        {/* In controlled mode (setlist view) the parent owns the view, so
+      {/* In fully controlled mode (setlist view passes view+scale+keyOffset)
+          the parent owns all controls in its own top bar — no row here. */}
+      {(viewProp === undefined ||
+        scaleProp === undefined ||
+        keyOffsetProp === undefined ||
+        trailing) && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {/* In controlled mode (setlist view) the parent owns the view, so
             the toggle and "set as default" are hidden. */}
-        {viewProp === undefined && (
-          <div
-            className="inline-flex rounded-md border border-border bg-bg p-0.5"
-            role="group"
-            aria-label="View"
-          >
-            <button
-              type="button"
-              className={segmentClass(view === 'sheet')}
-              aria-pressed={view === 'sheet'}
-              onClick={() => setViewState('sheet')}
+          {viewProp === undefined && (
+            <div
+              className="inline-flex rounded-md border border-border bg-bg p-0.5"
+              role="group"
+              aria-label="View"
             >
-              <Music size={14} /> Sheet
-            </button>
-            <button
-              type="button"
-              className={segmentClass(view === 'chords')}
-              aria-pressed={view === 'chords'}
-              onClick={() => setViewState('chords')}
-            >
-              <Guitar size={14} /> Chords
-            </button>
-            <button
-              type="button"
-              className={segmentClass(view === 'lyrics')}
-              aria-pressed={view === 'lyrics'}
-              onClick={() => setViewState('lyrics')}
-            >
-              <Mic size={14} /> Lyrics
-            </button>
-          </div>
-        )}
-        {/* Zoom is available in every view: text views scale via CSS zoom,
+              <button
+                type="button"
+                className={segmentClass(view === 'sheet')}
+                aria-pressed={view === 'sheet'}
+                onClick={() => setViewState('sheet')}
+              >
+                <Music size={14} /> Sheet
+              </button>
+              <button
+                type="button"
+                className={segmentClass(view === 'chords')}
+                aria-pressed={view === 'chords'}
+                onClick={() => setViewState('chords')}
+              >
+                <Guitar size={14} /> Chords
+              </button>
+              <button
+                type="button"
+                className={segmentClass(view === 'lyrics')}
+                aria-pressed={view === 'lyrics'}
+                onClick={() => setViewState('lyrics')}
+              >
+                <Mic size={14} /> Lyrics
+              </button>
+            </div>
+          )}
+          {/* Zoom is available in every view: text views scale via CSS zoom,
             the sheet view via abcjs's own scale param (issue #59). */}
-        {scaleProp === undefined && (
-          <div
-            className="inline-flex items-center rounded-md border border-border bg-bg p-0.5"
-            role="group"
-            aria-label="Zoom"
-          >
-            <button
-              type="button"
-              aria-label="Zoom out"
-              disabled={scale <= ZOOM_MIN}
-              onClick={() => zoomBy(-0.1)}
-              className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
+          {scaleProp === undefined && (
+            <div
+              className="inline-flex items-center rounded-md border border-border bg-bg p-0.5"
+              role="group"
+              aria-label="Zoom"
             >
-              <Minus size={13} />
-            </button>
-            <span className="w-9 text-center text-[11px] tabular-nums text-muted">
-              {Math.round(scale * 100)}%
-            </span>
-            <button
-              type="button"
-              aria-label="Zoom in"
-              disabled={scale >= ZOOM_MAX}
-              onClick={() => zoomBy(0.1)}
-              className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
-            >
-              <Plus size={13} />
-            </button>
-          </div>
-        )}
-        {/* Live transpose: +/- one semitone at a time, shown as the current
-            key. Live-only — the stored ABC and the arrangement's key are
-            never rewritten; persisting a key for a setlist item happens in
-            the setlist detail editor (transposed_key). */}
-        <div
-          className="inline-flex items-center rounded-md border border-border bg-bg p-0.5"
-          role="group"
-          aria-label="Transpose"
-        >
-          <button
-            type="button"
-            aria-label="Transpose down"
-            onClick={() => setKeyOffset((o) => o - 1)}
-            className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text"
-          >
-            <Minus size={13} />
-          </button>
-          <span
-            className="w-10 text-center font-mono text-[11px] tabular-nums text-muted"
-            title={`Key: ${effectiveKey}${keyOffset !== 0 ? ` (${keyOffset > 0 ? `+${keyOffset}` : keyOffset} from ${baseKey})` : ''}`}
-          >
-            {effectiveKey}
-            {keyOffset !== 0 && (
-              <span className="text-accent">
-                {keyOffset > 0 ? `+${keyOffset}` : keyOffset}
+              <button
+                type="button"
+                aria-label="Zoom out"
+                disabled={scale <= ZOOM_MIN}
+                onClick={() => zoomBy(-0.1)}
+                className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
+              >
+                <Minus size={13} />
+              </button>
+              <span className="w-9 text-center text-[11px] tabular-nums text-muted">
+                {Math.round(scale * 100)}%
               </span>
-            )}
-          </span>
-          <button
-            type="button"
-            aria-label="Transpose up"
-            onClick={() => setKeyOffset((o) => o + 1)}
-            className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text"
-          >
-            <Plus size={13} />
-          </button>
+              <button
+                type="button"
+                aria-label="Zoom in"
+                disabled={scale >= ZOOM_MAX}
+                onClick={() => zoomBy(0.1)}
+                className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
+              >
+                <Plus size={13} />
+              </button>
+            </div>
+          )}
+          {viewProp === undefined && !isDefault && (
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={onSaveDefault}
+              disabled={savingDefault}
+            >
+              {savingDefault ? 'Saving…' : 'Set as my default'}
+            </button>
+          )}
+          {trailing && <div className="flex items-center">{trailing}</div>}
+          {/* Live transpose sits at the row's upper right. In controlled mode
+            (setlist view) the parent owns it and renders it in the top bar. */}
+          {keyOffsetProp === undefined && (
+            <TransposeControl
+              baseKey={baseKey}
+              keyOffset={keyOffset}
+              onKeyOffsetChange={setKeyOffset}
+              className="ml-auto"
+            />
+          )}
         </div>
-        {viewProp === undefined && !isDefault && (
-          <button
-            type="button"
-            className="btn btn-outline"
-            onClick={onSaveDefault}
-            disabled={savingDefault}
-          >
-            {savingDefault ? 'Saving…' : 'Set as my default'}
-          </button>
-        )}
-        {trailing && (
-          <div className="ml-auto flex items-center">{trailing}</div>
-        )}
-      </div>
+      )}
 
       {saveError && (
         <div className="error-banner mb-3" role="alert">

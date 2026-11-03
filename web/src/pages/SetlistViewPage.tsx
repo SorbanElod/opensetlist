@@ -21,6 +21,7 @@ import { getArrangement, type Arrangement } from '../api/arrangements';
 import { getSetlist, type SetlistDetail } from '../api/setlists';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 import { ArrangementRenderer } from '../components/ArrangementRenderer';
+import { TransposeControl } from '../components/TransposeControl';
 import { PageHeader } from '../components/PageHeader';
 import { zoomStyle, type ViewMode } from '../lib/abcViews';
 
@@ -51,6 +52,9 @@ export function SetlistViewPage() {
   const ZOOM_MIN = 0.5;
   const ZOOM_MAX = 1.5;
   const [scale, setScale] = useState(1);
+  // Per-item live transpose offsets (render-time only; the saved per-item
+  // key is the item's transposedKey override, edited on the detail page).
+  const [keyOffsets, setKeyOffsets] = useState<Record<string, number>>({});
   function zoomBy(delta: number) {
     setScale((s) =>
       Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round((s + delta) * 10) / 10)),
@@ -354,13 +358,29 @@ export function SetlistViewPage() {
                               </p>
                             )}
                           </div>
-                          <Link
-                            to={`/arrangements/${arrangement.id}`}
-                            className="btn btn-ghost shrink-0 px-1.5"
-                            aria-label={`Open ${item.arrangement.songTitle} arrangement page`}
-                          >
-                            <Eye size={15} />
-                          </Link>
+                          {/* Live transpose at the item's upper right corner
+                              (render-time only; saved key = transposedKey). */}
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <TransposeControl
+                              baseKey={
+                                item.transposedKey ?? arrangement.originalKey
+                              }
+                              keyOffset={keyOffsets[item.id] ?? 0}
+                              onKeyOffsetChange={(o) =>
+                                setKeyOffsets((prev) => ({
+                                  ...prev,
+                                  [item.id]: o,
+                                }))
+                              }
+                            />
+                            <Link
+                              to={`/arrangements/${arrangement.id}`}
+                              className="btn btn-ghost shrink-0 px-1.5"
+                              aria-label={`Open ${item.arrangement.songTitle} arrangement page`}
+                            >
+                              <Eye size={15} />
+                            </Link>
+                          </div>
                         </div>
                         <ArrangementRenderer
                           arrangement={arrangement}
@@ -371,6 +391,13 @@ export function SetlistViewPage() {
                           transposedKey={item.transposedKey}
                           view={view}
                           scale={scale}
+                          keyOffset={keyOffsets[item.id] ?? 0}
+                          onKeyOffsetChange={(o) =>
+                            setKeyOffsets((prev) => ({
+                              ...prev,
+                              [item.id]: o,
+                            }))
+                          }
                           bare
                           applyZoom={false}
                         />
