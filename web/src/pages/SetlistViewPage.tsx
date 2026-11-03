@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import {
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   Eye,
+  Focus,
   Guitar,
+  List,
   Mic,
   Minus,
   Music,
@@ -53,6 +57,27 @@ export function SetlistViewPage() {
     );
   }
 
+  // Layout mode (issue #62): 'all' = one long page; 'one' = a single item in
+  // a viewport-height panel (short up/down scroll within the item), with
+  // prev/next (left/right) navigation between items.
+  const [mode, setMode] = useState<'all' | 'one'>('all');
+  const [index, setIndex] = useState(0);
+  const itemCount = detail?.items.length ?? 0;
+  const currentIndex = Math.min(index, Math.max(itemCount - 1, 0));
+
+  // Arrow keys navigate items in 'one' mode (buttons are the primary control;
+  // keys are a convenience for laptop testing).
+  useEffect(() => {
+    if (mode !== 'one') return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowRight')
+        setIndex((i) => Math.min(i + 1, itemCount - 1));
+      if (event.key === 'ArrowLeft') setIndex((i) => Math.max(i - 1, 0));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mode, itemCount]);
+
   // setState only inside the promise callbacks (react-hooks/set-state-in-effect).
   useEffect(() => {
     if (!id) return;
@@ -89,6 +114,20 @@ export function SetlistViewPage() {
     `flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-semibold transition-colors ${
       active ? 'bg-raised text-text' : 'text-muted hover:text-text'
     }`;
+
+  // In 'one' mode only the current item is rendered, inside a
+  // viewport-height panel (short up/down scroll within the item).
+  const visibleItems =
+    detail === null
+      ? []
+      : mode === 'one'
+        ? detail.items.slice(currentIndex, currentIndex + 1)
+        : detail.items;
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  // Item changed -> panel scrolls back to the beginning of the item.
+  useEffect(() => {
+    if (panelRef.current) panelRef.current.scrollTop = 0;
+  }, [currentIndex, mode]);
 
   return (
     <div>
@@ -132,6 +171,28 @@ export function SetlistViewPage() {
           />
 
           <div className="mb-4 flex flex-wrap items-center gap-2">
+            <div
+              className="inline-flex rounded-md border border-border bg-bg p-0.5"
+              role="group"
+              aria-label="Layout"
+            >
+              <button
+                type="button"
+                className={segmentClass(mode === 'all')}
+                aria-pressed={mode === 'all'}
+                onClick={() => setMode('all')}
+              >
+                <List size={14} /> All
+              </button>
+              <button
+                type="button"
+                className={segmentClass(mode === 'one')}
+                aria-pressed={mode === 'one'}
+                onClick={() => setMode('one')}
+              >
+                <Focus size={14} /> One at a time
+              </button>
+            </div>
             <div
               className="inline-flex rounded-md border border-border bg-bg p-0.5"
               role="group"
@@ -200,81 +261,122 @@ export function SetlistViewPage() {
               </p>
             </div>
           ) : (
-            detail.items.map((item) => {
-              const arrangement = item.arrangementId
-                ? arrangements.get(item.arrangementId)
-                : undefined;
-              if (!item.arrangement || !arrangement) {
-                return (
-                  <div
-                    key={item.id}
-                    className="card mb-3 flex items-start gap-2.5 p-4"
-                    data-testid="setlist-view-item"
+            <>
+              {mode === 'one' && (
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    aria-label="Previous item"
+                    disabled={currentIndex === 0}
+                    onClick={() => setIndex((i) => Math.max(i - 1, 0))}
                   >
-                    <StickyNote
-                      size={16}
-                      className="mt-0.5 shrink-0 text-accent"
-                    />
-                    <div className="min-w-0">
-                      <span className="font-mono text-[12px] text-subtle">
-                        {item.position}
-                      </span>
-                      <p className="whitespace-pre-wrap break-words text-[13.5px]">
-                        {item.notes}
-                      </p>
-                    </div>
-                  </div>
-                );
-              }
-              return (
-                <div
-                  key={item.id}
-                  className="card mb-3 p-5"
-                  data-testid="setlist-view-item"
-                >
-                  <div className="mb-3 flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-mono text-[12px] text-subtle">
-                          {item.position}
-                        </span>
-                        <h2 className="truncate text-[15px] font-bold tracking-tight">
-                          {item.arrangement.songTitle} — {arrangement.title}
-                        </h2>
-                      </div>
-                      <p className="mt-0.5 font-mono text-[12px] text-muted">
-                        {arrangement.originalKey}
-                        {item.transposedKey ? ` → ${item.transposedKey}` : ''}
-                        {arrangement.bpm !== null
-                          ? ` · ${arrangement.bpm} BPM`
-                          : ''}
-                      </p>
-                      {item.notes && (
-                        <p className="mt-1 text-[12.5px] text-muted">
-                          {item.notes}
-                        </p>
-                      )}
-                    </div>
-                    <Link
-                      to={`/arrangements/${arrangement.id}`}
-                      className="btn btn-ghost shrink-0 px-1.5"
-                      aria-label={`Open ${item.arrangement.songTitle} arrangement page`}
-                    >
-                      <Eye size={15} />
-                    </Link>
-                  </div>
-                  <ArrangementRenderer
-                    arrangement={arrangement}
-                    sequence={
-                      item.effectiveSequence ?? arrangement.defaultSequence
+                    <ChevronLeft size={15} /> Prev
+                  </button>
+                  <span className="font-mono text-[12px] tabular-nums text-muted">
+                    {detail.items[currentIndex]!.position} /{' '}
+                    {detail.items.length}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    aria-label="Next item"
+                    disabled={currentIndex >= detail.items.length - 1}
+                    onClick={() =>
+                      setIndex((i) => Math.min(i + 1, detail.items.length - 1))
                     }
-                    transposedKey={item.transposedKey}
-                    view={view}
-                    scale={scale}
-                  />
+                  >
+                    Next <ChevronRight size={15} />
+                  </button>
                 </div>
-              );
-            })
+              )}
+              <div
+                ref={mode === 'one' ? panelRef : undefined}
+                className={
+                  mode === 'one'
+                    ? 'h-[calc(100svh-15rem)] overflow-y-auto'
+                    : undefined
+                }
+              >
+                {visibleItems.map((item) => {
+                  const arrangement = item.arrangementId
+                    ? arrangements.get(item.arrangementId)
+                    : undefined;
+                  if (!item.arrangement || !arrangement) {
+                    return (
+                      <div
+                        key={item.id}
+                        className="card mb-3 flex items-start gap-2.5 p-4"
+                        data-testid="setlist-view-item"
+                      >
+                        <StickyNote
+                          size={16}
+                          className="mt-0.5 shrink-0 text-accent"
+                        />
+                        <div className="min-w-0">
+                          <span className="font-mono text-[12px] text-subtle">
+                            {item.position}
+                          </span>
+                          <p className="whitespace-pre-wrap break-words text-[13.5px]">
+                            {item.notes}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div
+                      key={item.id}
+                      className="card mb-3 p-5"
+                      data-testid="setlist-view-item"
+                    >
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-baseline gap-2">
+                            <span className="font-mono text-[12px] text-subtle">
+                              {item.position}
+                            </span>
+                            <h2 className="truncate text-[15px] font-bold tracking-tight">
+                              {item.arrangement.songTitle} — {arrangement.title}
+                            </h2>
+                          </div>
+                          <p className="mt-0.5 font-mono text-[12px] text-muted">
+                            {arrangement.originalKey}
+                            {item.transposedKey
+                              ? ` → ${item.transposedKey}`
+                              : ''}
+                            {arrangement.bpm !== null
+                              ? ` · ${arrangement.bpm} BPM`
+                              : ''}
+                          </p>
+                          {item.notes && (
+                            <p className="mt-1 text-[12.5px] text-muted">
+                              {item.notes}
+                            </p>
+                          )}
+                        </div>
+                        <Link
+                          to={`/arrangements/${arrangement.id}`}
+                          className="btn btn-ghost shrink-0 px-1.5"
+                          aria-label={`Open ${item.arrangement.songTitle} arrangement page`}
+                        >
+                          <Eye size={15} />
+                        </Link>
+                      </div>
+                      <ArrangementRenderer
+                        arrangement={arrangement}
+                        sequence={
+                          item.effectiveSequence ?? arrangement.defaultSequence
+                        }
+                        transposedKey={item.transposedKey}
+                        view={view}
+                        scale={scale}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </>
       )}

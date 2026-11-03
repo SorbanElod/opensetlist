@@ -200,6 +200,45 @@ describe('SetlistViewPage', () => {
     expect(rendered.some((a) => a.includes('K:G'))).toBe(true);
   });
 
+  it('one-at-a-time mode shows a single item; prev/next and arrow keys move between items', async () => {
+    stubApi();
+    renderApp('/setlists/sl1/view');
+
+    await screen.findByText(/Amazing Grace — Default/);
+    fireEvent.click(screen.getByRole('button', { name: /one at a time/i }));
+
+    // Only the first item is rendered; prev is disabled at the start.
+    expect(screen.queryByText(/Joy to the World/)).toBeNull();
+    expect(screen.getByText(/1 \/ 3/)).toBeTruthy();
+    expect(
+      (
+        screen.getByRole('button', {
+          name: 'Previous item',
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+
+    // Next -> the note card is item 2.
+    fireEvent.click(screen.getByRole('button', { name: 'Next item' }));
+    expect(await screen.findByText('Soundcheck at 9:00')).toBeTruthy();
+    expect(screen.queryByText(/Amazing Grace — Default/)).toBeNull();
+    expect(screen.getByText(/2 \/ 3/)).toBeTruthy();
+
+    // Next -> last item; next disabled at the end.
+    fireEvent.click(screen.getByRole('button', { name: 'Next item' }));
+    expect(await screen.findByText(/Joy to the World — Standard/)).toBeTruthy();
+    expect(screen.getByText(/3 \/ 3/)).toBeTruthy();
+    expect(
+      (screen.getByRole('button', { name: 'Next item' }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+
+    // ArrowLeft goes back to item 2.
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    expect(await screen.findByText('Soundcheck at 9:00')).toBeTruthy();
+    expect(screen.getByText(/2 \/ 3/)).toBeTruthy();
+  });
+
   it('applies the top-level view toggle to all items', async () => {
     stubApi();
     renderApp('/setlists/sl1/view');
