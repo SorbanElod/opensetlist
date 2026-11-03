@@ -113,11 +113,18 @@ export function transposeAbc(
         }
         return line;
       }
-      // Music line: transpose quoted chord symbols only.
-      return line.replace(
-        /"([^"]*)"/g,
-        (_all, chord: string) => `"${transposeChord(chord, delta)}"`,
-      );
+      // Music line: transpose the note letters (A-G/a-g — rests z/Z, bar
+      // lines and decorations are not pitches and stay) AND the quoted chord
+      // symbols. Quoted and unquoted segments are handled separately so chord
+      // text is never note-transposed.
+      return line
+        .split(/("[^"]*")/)
+        .map((part) =>
+          part.startsWith('"')
+            ? `"${transposeChord(part.slice(1, -1), delta)}"`
+            : part.replace(/[A-Ga-g]/g, (note) => transposeNote(note, delta)),
+        )
+        .join('');
     })
     .join('\n');
 }
