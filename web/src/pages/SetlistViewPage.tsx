@@ -301,15 +301,15 @@ export function SetlistViewPage() {
                         data-testid="setlist-view-item"
                         style={view === 'sheet' ? {} : zoomStyle(scale)}
                       >
-                        <div className="card mb-3 flex items-start gap-2.5 p-4">
-                          <StickyNote
-                            size={16}
-                            className="mt-0.5 shrink-0 text-accent"
-                          />
-                          <div className="min-w-0">
-                            <span className="font-mono text-[12px] text-subtle">
-                              {item.position}
-                            </span>
+                        <div className="card mb-3 flex items-start gap-3 p-4">
+                          <span className="mt-0.5 w-6 shrink-0 text-right font-mono text-[12px] tabular-nums text-subtle">
+                            {item.position}
+                          </span>
+                          <div className="flex min-w-0 flex-1 items-start gap-2">
+                            <StickyNote
+                              size={16}
+                              className="mt-0.5 shrink-0 text-accent"
+                            />
                             <p className="whitespace-pre-wrap break-words text-[13.5px]">
                               {item.notes}
                             </p>
@@ -331,17 +331,14 @@ export function SetlistViewPage() {
                       style={view === 'sheet' ? {} : zoomStyle(scale)}
                     >
                       <div className="card mb-3 p-5">
-                        <div className="mb-3 flex items-start justify-between gap-3">
+                        <div className="mb-3 flex items-start gap-3">
+                          <span className="mt-0.5 w-6 shrink-0 text-right font-mono text-[12px] tabular-nums text-subtle">
+                            {item.position}
+                          </span>
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-baseline gap-2">
-                              <span className="font-mono text-[12px] text-subtle">
-                                {item.position}
-                              </span>
-                              <h2 className="truncate text-[15px] font-bold tracking-tight">
-                                {item.arrangement.songTitle} —{' '}
-                                {arrangement.title}
-                              </h2>
-                            </div>
+                            <h2 className="text-[15px] font-bold tracking-tight">
+                              {item.arrangement.songTitle} — {arrangement.title}
+                            </h2>
                             <p className="mt-0.5 font-mono text-[12px] text-muted">
                               {arrangement.originalKey}
                               {item.transposedKey
