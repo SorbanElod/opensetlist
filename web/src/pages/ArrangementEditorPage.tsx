@@ -390,17 +390,17 @@ export function ArrangementEditorPage() {
               Play order of sections, e.g. V1, C1, V2, C1. Repeats allowed.
             </p>
             {sequence.length > 0 && (
-              <ol className="mb-2 flex flex-wrap gap-1.5">
+              <ol className="mb-2 flex flex-col gap-1.5">
                 {sequence.map((entry, i) => (
                   <li
                     key={i}
-                    className="flex items-center gap-1 rounded-lg border border-border bg-raised px-2 py-1 font-mono text-[12px]"
+                    className="flex items-center justify-between gap-2 rounded-md border border-border bg-raised px-2 py-1 font-mono text-[12px]"
                   >
                     <span>
                       {i + 1}. {entry}
                     </span>
                     {canEdit && (
-                      <>
+                      <div className="flex shrink-0 gap-1">
                         <button
                           type="button"
                           className="btn btn-ghost px-1"
@@ -427,7 +427,7 @@ export function ArrangementEditorPage() {
                         >
                           <Trash2 size={12} />
                         </button>
-                      </>
+                      </div>
                     )}
                   </li>
                 ))}
