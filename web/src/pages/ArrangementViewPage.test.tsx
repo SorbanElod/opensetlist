@@ -266,19 +266,30 @@ describe('ArrangementViewPage', () => {
     expect(scaled.getAttribute('style')).toContain('zoom: 0.5');
   });
 
-  it('hides the zoom control in sheet view (scaling the staff is a follow-up issue)', async () => {
+  it('zooms the sheet view via the abcjs scale param (not CSS zoom), scrolling instead of truncating', async () => {
     stubApi('sheet');
     renderApp('/arrangements/a1');
 
     await waitFor(() => {
       expect(vi.mocked(renderAbc).mock.calls.length).toBeGreaterThan(0);
     });
-    expect(screen.queryByRole('button', { name: 'Zoom in' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Zoom out' })).toBeNull();
+    // At 100% the staff renders fit-to-width (responsive), not scaled.
+    expect(vi.mocked(renderAbc).mock.calls[0]![2]).toEqual({
+      responsive: 'resize',
+    });
 
-    // but it is available in the text views
-    fireEvent.click(screen.getByRole('button', { name: /lyrics/i }));
-    expect(await screen.findByRole('button', { name: 'Zoom in' })).toBeTruthy();
+    // Zoom is available in sheet view too (issue #59): abcjs gets its own
+    // scale param in non-responsive mode, so the staff scales and the
+    // wrapper's overflow-x-auto scrolls instead of truncating.
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    await waitFor(() => {
+      const last = vi.mocked(renderAbc).mock.calls.at(-1)!;
+      expect(last[2]).toEqual({ scale: 1.1 });
+    });
+    // The sections wrapper scrolls horizontally in sheet view.
+    expect(screen.getByTestId('scaled-content').className).toContain(
+      'overflow-x-auto',
+    );
   });
 
   it('offers "Set as my default" when the view differs, and PATCHes /api/auth/me', async () => {

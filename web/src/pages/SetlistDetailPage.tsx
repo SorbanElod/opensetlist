@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import {
   ChevronDown,
   ChevronUp,
+  Eye,
   ListPlus,
   Pencil,
   Plus,
@@ -153,31 +154,41 @@ export function SetlistDetailPage() {
             : `${items.length} item${items.length === 1 ? '' : 's'}`
         }
         actions={
-          canEdit && (
-            <>
-              <button
-                type="button"
-                className="btn btn-ghost"
-                aria-label="Edit setlist title and date"
-                onClick={() => setEditingHeader((v) => !v)}
-              >
-                <Pencil size={15} />
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost"
-                aria-label={
-                  confirmingDeleteSetlist
-                    ? 'Confirm delete setlist'
-                    : 'Delete setlist'
-                }
-                onClick={() => void onDeleteSetlist()}
-                disabled={busy}
-              >
-                <Trash2 size={15} />
-              </button>
-            </>
-          )
+          <>
+            {/* On-stage view (issue #62): every role, readers included. */}
+            <Link
+              to={`/setlists/${setlist.id}/view`}
+              className="btn btn-outline"
+              aria-label="View setlist"
+            >
+              <Eye size={15} /> View
+            </Link>
+            {canEdit && (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  aria-label="Edit setlist title and date"
+                  onClick={() => setEditingHeader((v) => !v)}
+                >
+                  <Pencil size={15} />
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  aria-label={
+                    confirmingDeleteSetlist
+                      ? 'Confirm delete setlist'
+                      : 'Delete setlist'
+                  }
+                  onClick={() => void onDeleteSetlist()}
+                  disabled={busy}
+                >
+                  <Trash2 size={15} />
+                </button>
+              </>
+            )}
+          </>
         }
       />
 

@@ -5,6 +5,7 @@ import {
   lyricsText,
   orderedSections,
   sheetAbc,
+  zoomStyle,
 } from './abcViews';
 import type { ArrangementSection } from '../api/arrangements';
 
@@ -162,5 +163,16 @@ describe('sheetAbc', () => {
   it('leaves music lines untouched (quoted chords are not C: fields)', () => {
     const abc = 'X:1\nK:G\n"C"c2 B2 |\nw: how sweet';
     expect(sheetAbc(abc)).toBe(abc);
+  });
+});
+
+describe('zoomStyle', () => {
+  it('compensates width only when zooming in (prevents overflow)', () => {
+    expect(zoomStyle(1)).toEqual({ zoom: 1 });
+    expect(zoomStyle(1.5)).toEqual({ zoom: 1.5, width: `${100 / 1.5}%` });
+  });
+
+  it('does not compensate when zooming out (card stays compact, not full-width with tiny text)', () => {
+    expect(zoomStyle(0.5)).toEqual({ zoom: 0.5 });
   });
 });

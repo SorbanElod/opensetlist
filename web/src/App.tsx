@@ -10,6 +10,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { SetlistDetailPage } from './pages/SetlistDetailPage';
 import { SetlistsPage } from './pages/SetlistsPage';
+import { SetlistViewPage } from './pages/SetlistViewPage';
 import { SongDetailPage } from './pages/SongDetailPage';
 import { SongFormPage } from './pages/SongFormPage';
 import { SongsPage } from './pages/SongsPage';
@@ -73,6 +74,8 @@ export function AppRoutes() {
         <Route path="songs" element={<SongsPage />} />
         <Route path="setlists" element={<SetlistsPage />} />
         <Route path="setlists/:id" element={<SetlistDetailPage />} />
+        {/* On-stage view (issue #62): readers included, like the arrangement view. */}
+        <Route path="setlists/:id/view" element={<SetlistViewPage />} />
         <Route path="songs/new" element={<SongFormPage />} />
         <Route path="songs/:id" element={<SongDetailPage />} />
         <Route path="songs/:id/edit" element={<SongFormPage />} />

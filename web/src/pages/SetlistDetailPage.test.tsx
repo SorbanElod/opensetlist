@@ -214,6 +214,10 @@ describe('SetlistDetailPage', () => {
     expect(screen.getByText(/G → D · C1 → C1/)).toBeTruthy();
     expect(screen.getByText('capo 3')).toBeTruthy();
     expect(screen.getByText('Soundcheck at 9:00')).toBeTruthy();
+
+    // On-stage view link (issue #62) is present for everyone.
+    const viewLink = screen.getByRole('link', { name: 'View setlist' });
+    expect(viewLink.getAttribute('href')).toBe('/setlists/sl1/view');
   });
 
   it('moves an item up and reflects the new order after refetch', async () => {
