@@ -399,7 +399,7 @@ export function ArrangementEditorPage() {
                 {sequence.map((entry, i) => (
                   <li
                     key={i}
-                    className="flex items-center justify-between gap-2 rounded-md border border-border bg-raised px-2 py-1 font-mono text-[12px]"
+                    className="flex items-center justify-between gap-2 rounded-md border border-border bg-raised px-2 py-1.5 font-mono text-[12px]"
                   >
                     <span>
                       {i + 1}. {entry}
@@ -408,29 +408,29 @@ export function ArrangementEditorPage() {
                       <div className="flex shrink-0 gap-1">
                         <button
                           type="button"
-                          className="btn btn-ghost px-1"
+                          className="btn btn-ghost px-2.5"
                           aria-label={`Move ${entry} up`}
                           disabled={i === 0}
                           onClick={() => moveSequence(i, -1)}
                         >
-                          <ArrowUp size={12} />
+                          <ArrowUp size={15} />
                         </button>
                         <button
                           type="button"
-                          className="btn btn-ghost px-1"
+                          className="btn btn-ghost px-2.5"
                           aria-label={`Move ${entry} down`}
                           disabled={i === sequence.length - 1}
                           onClick={() => moveSequence(i, 1)}
                         >
-                          <ArrowDown size={12} />
+                          <ArrowDown size={15} />
                         </button>
                         <button
                           type="button"
-                          className="btn btn-ghost px-1"
+                          className="btn btn-ghost px-2.5"
                           aria-label={`Remove ${entry} from sequence`}
                           onClick={() => removeFromSequence(i)}
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={15} />
                         </button>
                       </div>
                     )}
