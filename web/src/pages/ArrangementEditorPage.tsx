@@ -30,10 +30,9 @@ import {
 } from '../api/arrangements';
 import { getSong, KEYS, type Song } from '../api/songs';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
-import { AbcRenderer } from '../components/AbcRenderer';
+import { ArrangementRenderer } from '../components/ArrangementRenderer';
 import { PageHeader } from '../components/PageHeader';
 import { Popover } from '../components/Popover';
-import { orderedSections, sheetAbc } from '../lib/abcViews';
 
 // Textarea that grows with its content (rows=1, height = scrollHeight): the
 // page scrolls, never an inner scrollbar — nested scrolling panels in the
@@ -272,9 +271,20 @@ export function ArrangementEditorPage() {
     }
   }
 
-  // The live preview shows the WHOLE arrangement in play order (sequence
-  // first, then any unmentioned sections) — same rule as the view pages.
-  const previewSections = orderedSections(sections, sequence);
+  // The live preview IS the shared renderer (same view as the song page),
+  // fed a synthetic arrangement from the current form state — whole song in
+  // play order, Sheet/Chords/Lyrics toggle included.
+  const previewArrangement: Arrangement = {
+    id: 'preview',
+    songId: song?.id ?? '',
+    title: title || 'Untitled',
+    originalKey,
+    bpm: bpmText.trim() === '' ? null : Number(bpmText),
+    defaultSequence: sequence,
+    sections,
+    version: 1,
+    createdAt: '',
+  };
 
   if (loadError) {
     return (
@@ -563,28 +573,16 @@ export function ArrangementEditorPage() {
           </div>
 
           <div className="mt-5">
-            <span className="flabel">
-              Live preview — the whole arrangement in play order
-            </span>
-            {previewSections.length > 0 ? (
-              <div className="card mt-2 px-4 py-2">
-                {previewSections.map((s, i) => (
-                  <section key={`${s.label}-${i}`} className="py-2">
-                    <h2 className="mb-1 text-[13px] font-semibold uppercase tracking-wide text-muted">
-                      {s.label || `Section ${i + 1}`}
-                    </h2>
-                    {/* debounceMs: live preview re-renders ~200ms after the
-                        last keystroke. sheetAbc strips T:/C: so title/author
-                        are not repeated inside every section. */}
-                    <AbcRenderer abc={sheetAbc(s.content)} debounceMs={200} />
-                  </section>
-                ))}
-              </div>
-            ) : (
-              <p className="hint mt-2">
-                The preview appears once a section has content.
-              </p>
-            )}
+            <span className="flabel">Live preview</span>
+            {/* The SAME renderer as the song/on-stage pages — whole arrangement
+                in play order, Sheet/Chords/Lyrics toggle, zoom. debounceMs
+                keeps abcjs from re-rendering on every keystroke. */}
+            <div className="mt-2">
+              <ArrangementRenderer
+                arrangement={previewArrangement}
+                debounceMs={200}
+              />
+            </div>
           </div>
 
           {canEdit && (

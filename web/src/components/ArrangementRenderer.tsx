@@ -31,7 +31,11 @@ export function ArrangementRenderer({
   scale: scaleProp,
   bare,
   applyZoom,
+  debounceMs,
 }: {
+  // debounceMs for the sheet view's abcjs render (editor live preview: 200ms
+  // so long sections don't re-render on every keystroke).
+  debounceMs?: number;
   arrangement: Arrangement;
   // Optional control docked at the right end of the view-toggle row (the
   // arrangement switcher on the song detail page).
@@ -129,6 +133,7 @@ export function ArrangementRenderer({
         <AbcRenderer
           abc={sheetAbc(content)}
           scale={scale === 1 ? undefined : scale}
+          debounceMs={debounceMs}
         />
       );
     if (view === 'chords') return <ChordChartView abc={content} />;
