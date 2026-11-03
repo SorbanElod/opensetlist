@@ -494,7 +494,7 @@ export function ArrangementEditorPage() {
                       className="flabel mb-0"
                       htmlFor={`section-${i}-label`}
                     >
-                      Label
+                      Section label
                     </label>
                     {canEdit && (
                       <div className="flex shrink-0 gap-1">
