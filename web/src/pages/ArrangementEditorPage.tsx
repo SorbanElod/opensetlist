@@ -32,6 +32,8 @@ import { getSong, KEYS, type Song } from '../api/songs';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 import { AbcRenderer } from '../components/AbcRenderer';
 import { PageHeader } from '../components/PageHeader';
+import { Popover } from '../components/Popover';
+import { orderedSections } from '../lib/abcViews';
 
 // Textarea that grows with its content (rows=1, height = scrollHeight): the
 // page scrolls, never an inner scrollbar — nested scrolling panels in the
@@ -84,8 +86,7 @@ export function ArrangementEditorPage() {
   const [bpmText, setBpmText] = useState('');
   const [sections, setSections] = useState<ArrangementSection[]>([]);
   const [sequence, setSequence] = useState<string[]>([]);
-  const [sequenceToAdd, setSequenceToAdd] = useState('');
-  const [previewIndex, setPreviewIndex] = useState(0);
+  const [seqMenuOpen, setSeqMenuOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<ArrangementFieldErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -134,7 +135,6 @@ export function ArrangementEditorPage() {
     setSections((prev) =>
       prev.map((s, i) => (i === index ? { ...s, ...patch } : s)),
     );
-    setPreviewIndex(index);
   }
 
   function moveSection(index: number, dir: -1 | 1) {
@@ -148,7 +148,6 @@ export function ArrangementEditorPage() {
       next[j] = a;
       return next;
     });
-    setPreviewIndex(j);
   }
 
   function removeSection(index: number) {
@@ -157,7 +156,6 @@ export function ArrangementEditorPage() {
     // Removing a section invalidates sequence entries with its label — drop
     // them here so the form can never submit an invalid sequence.
     if (label) setSequence((prev) => prev.filter((e) => e !== label));
-    setPreviewIndex(0);
   }
 
   function addSection() {
@@ -165,14 +163,12 @@ export function ArrangementEditorPage() {
       ...prev,
       { label: `Section ${prev.length + 1}`, content: '' },
     ]);
-    setPreviewIndex(sections.length);
   }
 
-  function addToSequence() {
-    const label = sequenceToAdd.trim();
-    if (!label) return;
-    setSequence((prev) => [...prev, label]); // repeats are legal (V1 C1 V1 C1)
-    setSequenceToAdd('');
+  function addToSequence(label: string) {
+    const l = label.trim();
+    if (!l) return;
+    setSequence((prev) => [...prev, l]); // repeats are legal (V1 C1 V1 C1)
   }
 
   function removeFromSequence(index: number) {
@@ -276,10 +272,9 @@ export function ArrangementEditorPage() {
     }
   }
 
-  const preview =
-    sections.length > 0
-      ? sections[Math.min(previewIndex, sections.length - 1)]
-      : null;
+  // The live preview shows the WHOLE arrangement in play order (sequence
+  // first, then any unmentioned sections) — same rule as the view pages.
+  const previewSections = orderedSections(sections, sequence);
 
   if (loadError) {
     return (
@@ -434,29 +429,41 @@ export function ArrangementEditorPage() {
               </ol>
             )}
             {canEdit && (
-              <div className="flex flex-col gap-2">
-                <select
-                  className="input"
-                  aria-label="Add section to sequence"
-                  value={sequenceToAdd}
-                  onChange={(e) => setSequenceToAdd(e.target.value)}
-                >
-                  <option value="">Add a section…</option>
+              <Popover
+                open={seqMenuOpen}
+                onClose={() => setSeqMenuOpen(false)}
+                label="Add to sequence"
+                panelClassName="w-full"
+                anchor={
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-block"
+                    aria-haspopup="dialog"
+                    aria-expanded={seqMenuOpen}
+                    onClick={() => setSeqMenuOpen((v) => !v)}
+                  >
+                    <Plus size={14} /> Add to sequence
+                  </button>
+                }
+              >
+                <div className="flabel">Pick a section</div>
+                <ul className="mt-1 flex max-h-48 flex-col overflow-y-auto">
                   {sections.map((s, i) => (
-                    <option key={i} value={s.label}>
-                      {s.label || `Section ${i + 1}`}
-                    </option>
+                    <li key={i}>
+                      <button
+                        type="button"
+                        className="w-full rounded-md px-2 py-1.5 text-left font-mono text-[13px] hover:bg-raised"
+                        onClick={() => {
+                          addToSequence(s.label || `Section ${i + 1}`);
+                          setSeqMenuOpen(false);
+                        }}
+                      >
+                        {s.label || `Section ${i + 1}`}
+                      </button>
+                    </li>
                   ))}
-                </select>
-                <button
-                  type="button"
-                  className="btn btn-outline btn-block"
-                  onClick={addToSequence}
-                  disabled={!sequenceToAdd.trim()}
-                >
-                  <Plus size={14} /> Add
-                </button>
-              </div>
+                </ul>
+              </Popover>
             )}
             {fieldErrors.defaultSequence && (
               <p className="field-error">{fieldErrors.defaultSequence}</p>
@@ -556,30 +563,21 @@ export function ArrangementEditorPage() {
           </div>
 
           <div className="mt-5">
-            <span className="flabel">Live preview</span>
-            {preview ? (
-              <div className="card mt-2 p-4">
-                <select
-                  className="input mb-3 font-mono"
-                  aria-label="Preview section"
-                  value={preview.label}
-                  onChange={(e) =>
-                    setPreviewIndex(
-                      Math.max(
-                        0,
-                        sections.findIndex((s) => s.label === e.target.value),
-                      ),
-                    )
-                  }
-                >
-                  {sections.map((s, i) => (
-                    <option key={i} value={s.label}>
+            <span className="flabel">
+              Live preview — the whole arrangement in play order
+            </span>
+            {previewSections.length > 0 ? (
+              <div className="card mt-2 px-4 py-2">
+                {previewSections.map((s, i) => (
+                  <section key={`${s.label}-${i}`} className="py-2">
+                    <h2 className="mb-1 text-[13px] font-semibold uppercase tracking-wide text-muted">
                       {s.label || `Section ${i + 1}`}
-                    </option>
-                  ))}
-                </select>
-                {/* debounceMs: live preview re-renders ~200ms after the last keystroke */}
-                <AbcRenderer abc={preview.content} debounceMs={200} />
+                    </h2>
+                    {/* debounceMs: live preview re-renders ~200ms after the
+                        last keystroke */}
+                    <AbcRenderer abc={s.content} debounceMs={200} />
+                  </section>
+                ))}
               </div>
             ) : (
               <p className="hint mt-2">
