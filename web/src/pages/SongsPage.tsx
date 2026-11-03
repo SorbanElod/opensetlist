@@ -328,11 +328,7 @@ export function SongsPage() {
           </div>
 
           <div className="mt-2 flex items-center justify-between gap-2">
-            <div
-              className="flex overflow-hidden rounded-md border border-border"
-              role="group"
-              aria-label="Tag match mode"
-            >
+            <div className="seg-group" role="group" aria-label="Tag match mode">
               {(
                 [
                   { value: true, label: 'ALL' },
@@ -343,11 +339,7 @@ export function SongsPage() {
                   key={opt.label}
                   type="button"
                   aria-pressed={matchAll === opt.value}
-                  className={`px-2 py-1 text-[11px] font-semibold ${
-                    matchAll === opt.value
-                      ? 'bg-accent text-on-accent'
-                      : 'bg-raised text-muted'
-                  }`}
+                  className="seg-btn"
                   onClick={() => setMatchAll(opt.value)}
                 >
                   {opt.label}

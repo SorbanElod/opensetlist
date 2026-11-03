@@ -20,7 +20,7 @@ export function TransposeControl({
     keyOffset === 0 ? baseKey : keyAtOffset(baseKey, keyOffset);
   return (
     <div
-      className={`inline-flex items-center rounded-md border border-border bg-bg p-0.5 ${className}`}
+      className={`seg-group ${className}`}
       role="group"
       aria-label="Transpose"
     >
@@ -28,12 +28,12 @@ export function TransposeControl({
         type="button"
         aria-label="Transpose down"
         onClick={() => onKeyOffsetChange(keyOffset - 1)}
-        className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text"
+        className="seg-btn seg-btn-icon"
       >
-        <Minus size={13} />
+        <Minus size={14} />
       </button>
       <span
-        className="w-10 text-center font-mono text-[11px] tabular-nums text-muted"
+        className="flex h-[36px] w-10 items-center justify-center font-mono text-[11px] tabular-nums text-muted"
         title={`Key: ${effectiveKey}${keyOffset !== 0 ? ` (${keyOffset > 0 ? `+${keyOffset}` : keyOffset} from ${baseKey})` : ''}`}
       >
         {effectiveKey}
@@ -47,9 +47,9 @@ export function TransposeControl({
         type="button"
         aria-label="Transpose up"
         onClick={() => onKeyOffsetChange(keyOffset + 1)}
-        className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text"
+        className="seg-btn seg-btn-icon"
       >
-        <Plus size={13} />
+        <Plus size={14} />
       </button>
     </div>
   );

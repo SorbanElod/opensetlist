@@ -127,11 +127,6 @@ export function ArrangementRenderer({
     sequence ?? arrangement.defaultSequence,
   );
 
-  const segmentClass = (active: boolean) =>
-    `flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-semibold transition-colors ${
-      active ? 'bg-raised text-text' : 'text-muted hover:text-text'
-    }`;
-
   // The three views of one ABC source: sheet renders via abcjs, chords is a
   // flowing HTML chord chart and lyrics plain text — all derived from the
   // same ABC at render time (see lib/abcViews).
@@ -181,14 +176,10 @@ export function ArrangementRenderer({
           {/* In controlled mode (setlist view) the parent owns the view, so
             the toggle and "set as default" are hidden. */}
           {viewProp === undefined && (
-            <div
-              className="inline-flex rounded-md border border-border bg-bg p-0.5"
-              role="group"
-              aria-label="View"
-            >
+            <div className="seg-group" role="group" aria-label="View">
               <button
                 type="button"
-                className={segmentClass(view === 'sheet')}
+                className="seg-btn"
                 aria-pressed={view === 'sheet'}
                 onClick={() => setViewState('sheet')}
               >
@@ -196,7 +187,7 @@ export function ArrangementRenderer({
               </button>
               <button
                 type="button"
-                className={segmentClass(view === 'chords')}
+                className="seg-btn"
                 aria-pressed={view === 'chords'}
                 onClick={() => setViewState('chords')}
               >
@@ -204,7 +195,7 @@ export function ArrangementRenderer({
               </button>
               <button
                 type="button"
-                className={segmentClass(view === 'lyrics')}
+                className="seg-btn"
                 aria-pressed={view === 'lyrics'}
                 onClick={() => setViewState('lyrics')}
               >
@@ -215,21 +206,17 @@ export function ArrangementRenderer({
           {/* Zoom is available in every view: text views scale via CSS zoom,
             the sheet view via abcjs's own scale param (issue #59). */}
           {scaleProp === undefined && (
-            <div
-              className="inline-flex items-center rounded-md border border-border bg-bg p-0.5"
-              role="group"
-              aria-label="Zoom"
-            >
+            <div className="seg-group" role="group" aria-label="Zoom">
               <button
                 type="button"
                 aria-label="Zoom out"
                 disabled={scale <= ZOOM_MIN}
                 onClick={() => zoomBy(-0.1)}
-                className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
+                className="seg-btn seg-btn-icon disabled:opacity-40"
               >
-                <Minus size={13} />
+                <Minus size={14} />
               </button>
-              <span className="w-9 text-center text-[11px] tabular-nums text-muted">
+              <span className="flex h-[36px] w-9 items-center justify-center text-[11px] tabular-nums text-muted">
                 {Math.round(scale * 100)}%
               </span>
               <button
@@ -237,9 +224,9 @@ export function ArrangementRenderer({
                 aria-label="Zoom in"
                 disabled={scale >= ZOOM_MAX}
                 onClick={() => zoomBy(0.1)}
-                className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
+                className="seg-btn seg-btn-icon disabled:opacity-40"
               >
-                <Plus size={13} />
+                <Plus size={14} />
               </button>
             </div>
           )}

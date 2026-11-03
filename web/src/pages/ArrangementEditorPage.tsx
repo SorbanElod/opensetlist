@@ -447,7 +447,7 @@ export function ArrangementEditorPage() {
                 anchor={
                   <button
                     type="button"
-                    className="btn btn-outline btn-block"
+                    className="btn btn-primary btn-block"
                     aria-haspopup="dialog"
                     aria-expanded={seqMenuOpen}
                     onClick={() => setSeqMenuOpen((v) => !v)}
@@ -486,7 +486,7 @@ export function ArrangementEditorPage() {
               {canEdit && (
                 <button
                   type="button"
-                  className="btn btn-outline"
+                  className="btn btn-primary"
                   onClick={addSection}
                 >
                   <Plus size={14} /> Add section

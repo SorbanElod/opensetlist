@@ -114,11 +114,6 @@ export function SetlistViewPage() {
   const canEdit =
     auth.status === 'authenticated' && canWrite(role, auth.user.isSuperadmin);
 
-  const segmentClass = (active: boolean) =>
-    `flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-semibold transition-colors ${
-      active ? 'bg-raised text-text' : 'text-muted hover:text-text'
-    }`;
-
   // In 'one' mode only the current item is rendered, inside a
   // viewport-height panel (short up/down scroll within the item).
   const visibleItems =
@@ -176,14 +171,10 @@ export function SetlistViewPage() {
           />
 
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <div
-              className="inline-flex rounded-md border border-border bg-bg p-0.5"
-              role="group"
-              aria-label="Layout"
-            >
+            <div className="seg-group" role="group" aria-label="Layout">
               <button
                 type="button"
-                className={segmentClass(mode === 'all')}
+                className="seg-btn"
                 aria-pressed={mode === 'all'}
                 onClick={() => setMode('all')}
               >
@@ -191,21 +182,17 @@ export function SetlistViewPage() {
               </button>
               <button
                 type="button"
-                className={segmentClass(mode === 'one')}
+                className="seg-btn"
                 aria-pressed={mode === 'one'}
                 onClick={() => setMode('one')}
               >
                 <Focus size={14} /> One at a time
               </button>
             </div>
-            <div
-              className="inline-flex rounded-md border border-border bg-bg p-0.5"
-              role="group"
-              aria-label="View"
-            >
+            <div className="seg-group" role="group" aria-label="View">
               <button
                 type="button"
-                className={segmentClass(view === 'sheet')}
+                className="seg-btn"
                 aria-pressed={view === 'sheet'}
                 onClick={() => setView('sheet')}
               >
@@ -213,7 +200,7 @@ export function SetlistViewPage() {
               </button>
               <button
                 type="button"
-                className={segmentClass(view === 'chords')}
+                className="seg-btn"
                 aria-pressed={view === 'chords'}
                 onClick={() => setView('chords')}
               >
@@ -221,7 +208,7 @@ export function SetlistViewPage() {
               </button>
               <button
                 type="button"
-                className={segmentClass(view === 'lyrics')}
+                className="seg-btn"
                 aria-pressed={view === 'lyrics'}
                 onClick={() => setView('lyrics')}
               >
@@ -238,11 +225,11 @@ export function SetlistViewPage() {
                 aria-label="Zoom out"
                 disabled={scale <= ZOOM_MIN}
                 onClick={() => zoomBy(-0.1)}
-                className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
+                className="seg-btn seg-btn-icon disabled:opacity-40"
               >
                 <Minus size={13} />
               </button>
-              <span className="w-9 text-center text-[11px] tabular-nums text-muted">
+              <span className="flex h-[36px] w-9 items-center justify-center text-[11px] tabular-nums text-muted">
                 {Math.round(scale * 100)}%
               </span>
               <button
@@ -250,7 +237,7 @@ export function SetlistViewPage() {
                 aria-label="Zoom in"
                 disabled={scale >= ZOOM_MAX}
                 onClick={() => zoomBy(0.1)}
-                className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
+                className="seg-btn seg-btn-icon disabled:opacity-40"
               >
                 <Plus size={13} />
               </button>
@@ -375,7 +362,7 @@ export function SetlistViewPage() {
                             />
                             <Link
                               to={`/arrangements/${arrangement.id}`}
-                              className="btn btn-ghost shrink-0 px-1.5"
+                              className="icon-btn shrink-0"
                               aria-label={`Open ${item.arrangement.songTitle} arrangement page`}
                             >
                               <Eye size={15} />
