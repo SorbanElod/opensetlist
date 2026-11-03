@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { authorize } from '../auth/authorize.js';
 import type { Db } from '../db/index.js';
+import { emitSetlistChanged } from '../realtime.js';
 import {
   createSongSchema,
   deleteSongSchema,
@@ -75,6 +76,7 @@ export const songsRoutes: FastifyPluginAsync<SongsOptions> = async (
         ownerId: request.user!.id,
         song: body,
       });
+      emitSetlistChanged(groupId);
 
       return reply.code(201).send({ song });
     },
@@ -99,6 +101,7 @@ export const songsRoutes: FastifyPluginAsync<SongsOptions> = async (
         ownerId: request.user!.id,
         data: body,
       });
+      emitSetlistChanged(groupId);
 
       return reply.code(201).send({
         imported: result.songs.length,
@@ -151,6 +154,7 @@ export const songsRoutes: FastifyPluginAsync<SongsOptions> = async (
               : 'Song not found',
         });
       }
+      emitSetlistChanged(groupId);
 
       return { song: result.song };
     },
@@ -182,6 +186,7 @@ export const songsRoutes: FastifyPluginAsync<SongsOptions> = async (
               : 'Song not found',
         });
       }
+      emitSetlistChanged(groupId);
 
       return { status: 'ok' };
     },

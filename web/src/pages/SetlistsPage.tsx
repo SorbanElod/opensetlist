@@ -1,9 +1,10 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
 import { Plus, X } from 'lucide-react';
 
 import { ApiError } from '../api/client';
 import { createSetlist, listSetlists, type Setlist } from '../api/setlists';
+import { useLiveRefetch } from '../api/useLiveRefetch';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 import { EmptyState } from '../components/EmptyState';
 import { ListRow } from '../components/ListRow';
@@ -23,25 +24,25 @@ export function SetlistsPage() {
   const canEdit =
     auth.status === 'authenticated' && canWrite(role, auth.user.isSuperadmin);
 
-  useEffect(() => {
-    let cancelled = false;
+  const load = useCallback(() => {
     listSetlists()
       .then((list) => {
-        if (!cancelled) {
-          setSetlists(list);
-          setError(null);
-        }
+        setSetlists(list);
+        setError(null);
       })
       .catch((err) => {
-        if (!cancelled)
-          setError(
-            err instanceof ApiError ? err.message : 'Failed to load setlists',
-          );
+        setError(
+          err instanceof ApiError ? err.message : 'Failed to load setlists',
+        );
       });
-    return () => {
-      cancelled = true;
-    };
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Live updates (issue #13): refetch on setlist:changed and on focus.
+  useLiveRefetch(load);
 
   async function onCreate(event: FormEvent) {
     event.preventDefault();
