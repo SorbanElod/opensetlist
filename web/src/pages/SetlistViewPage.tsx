@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import {
   ArrowLeft,
@@ -19,6 +19,7 @@ import {
 import { ApiError } from '../api/client';
 import { getArrangement, type Arrangement } from '../api/arrangements';
 import { getSetlist, type SetlistDetail } from '../api/setlists';
+import { useLiveRefetch } from '../api/useLiveRefetch';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 import { ArrangementRenderer } from '../components/ArrangementRenderer';
 import { PageHeader } from '../components/PageHeader';
@@ -79,12 +80,10 @@ export function SetlistViewPage() {
   }, [mode, itemCount]);
 
   // setState only inside the promise callbacks (react-hooks/set-state-in-effect).
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!id) return;
-    let cancelled = false;
     getSetlist(id)
       .then(async (d) => {
-        if (cancelled) return;
         setDetail(d);
         const ids = d.items
           .map((i) => i.arrangementId)
@@ -92,20 +91,22 @@ export function SetlistViewPage() {
         const full = await Promise.all(
           [...new Set(ids)].map((a) => getArrangement(a)),
         );
-        if (cancelled) return;
         setArrangements(new Map(full.map((a) => [a.id, a])));
         setError(null);
       })
       .catch((err) => {
-        if (!cancelled)
-          setError(
-            err instanceof ApiError ? err.message : 'Failed to load setlist',
-          );
+        setError(
+          err instanceof ApiError ? err.message : 'Failed to load setlist',
+        );
       });
-    return () => {
-      cancelled = true;
-    };
   }, [id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Live updates (issue #13): refetch on setlist:changed and on focus.
+  useLiveRefetch(load);
 
   const canEdit =
     auth.status === 'authenticated' && canWrite(role, auth.user.isSuperadmin);

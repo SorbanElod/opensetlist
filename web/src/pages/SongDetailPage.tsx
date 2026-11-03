@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { ArrowLeft, Pencil, Play, Plus, Trash2 } from 'lucide-react';
 
 import { ApiError } from '../api/client';
 import { listArrangements, type Arrangement } from '../api/arrangements';
 import { deleteSong, getSong, type Song } from '../api/songs';
+import { useLiveRefetch } from '../api/useLiveRefetch';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 import { ArrangementRenderer } from '../components/ArrangementRenderer';
 import { EmptyState } from '../components/EmptyState';
@@ -27,30 +28,24 @@ export function SongDetailPage() {
     string | null
   >(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!id) return;
-    let cancelled = false;
     getSong(id)
-      .then((s) => {
-        if (!cancelled) setSong(s);
-      })
-      .catch((err) => {
-        if (!cancelled)
-          setError(
-            err instanceof ApiError ? err.message : 'Failed to load song',
-          );
-      });
+      .then((s) => setSong(s))
+      .catch((err) =>
+        setError(err instanceof ApiError ? err.message : 'Failed to load song'),
+      );
     listArrangements(id)
-      .then((list) => {
-        if (!cancelled) setArrangements(list);
-      })
-      .catch(() => {
-        if (!cancelled) setArrangements([]);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .then((list) => setArrangements(list))
+      .catch(() => setArrangements([]));
   }, [id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Live updates (issue #13): refetch on setlist:changed and on focus.
+  useLiveRefetch(load);
 
   const canEdit =
     auth.status === 'authenticated' && canWrite(role, auth.user.isSuperadmin);

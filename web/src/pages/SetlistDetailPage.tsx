@@ -15,6 +15,7 @@ import {
 import { ApiError } from '../api/client';
 import { listArrangements, type Arrangement } from '../api/arrangements';
 import { KEYS, listSongs, type Song } from '../api/songs';
+import { useLiveRefetch } from '../api/useLiveRefetch';
 import {
   addItem,
   deleteItem,
@@ -74,6 +75,9 @@ export function SetlistDetailPage() {
   }, [id, reload]);
 
   const load = useCallback(() => setReload((r) => r + 1), []);
+
+  // Live updates (issue #13): refetch on setlist:changed and on focus.
+  useLiveRefetch(load);
 
   // A mutation can 409 (stale version): reload and surface the conflict.
   async function runMutation(action: () => Promise<unknown>) {

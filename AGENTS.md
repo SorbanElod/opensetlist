@@ -56,6 +56,8 @@ Rules:
 8. **Agent writes tests; Előd runs them.** Tests are part of the work, not an afterthought.
 9. **Postman collection stays current.** `postman/OpenSetlist.postman_collection.json` is the browsable API contract: any PR that adds or changes an endpoint updates the collection in the same PR — request, expected status codes, and example responses.
 10. **Current state lives on the issue board, not in this file.** Get the current phase and scope from the issues (they carry `[P#.x]` prefixes — `gh issue list`), don't guess. If something comes up that is outside the current issue's scope, create a new issue for it first — never fold it into the running PR.
+11. **Plan mode at the start of every issue.** Pull the issue (`gh issue view <n>`), present the plan (files, API surface, tests), and ask questions until everything is clear. No edits until the user explicitly approves.
+12. **No PR without explicit approval.** Commits and branch pushes happen on the issue branch during the work, but the PR is created only after the user explicitly approves the task — approval normally comes after the user's manual testing and review of the branch.
 
 ## Collaboration expectations
 

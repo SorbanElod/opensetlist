@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { authorize } from '../auth/authorize.js';
 import type { Db } from '../db/index.js';
+import { emitSetlistChanged } from '../realtime.js';
 import { getSingleGroupId } from '../songs/service.js';
 import {
   createItemSchema,
@@ -79,6 +80,7 @@ export const setlistsRoutes: FastifyPluginAsync<SetlistsOptions> = async (
         groupId,
         setlist: body,
       });
+      emitSetlistChanged(groupId, setlist.id);
       return reply.code(201).send({ setlist });
     },
   );
@@ -127,6 +129,7 @@ export const setlistsRoutes: FastifyPluginAsync<SetlistsOptions> = async (
               : 'Setlist not found',
         });
       }
+      emitSetlistChanged(groupId, request.params.id);
       return { setlist: result.setlist };
     },
   );
@@ -156,6 +159,7 @@ export const setlistsRoutes: FastifyPluginAsync<SetlistsOptions> = async (
               : 'Setlist not found',
         });
       }
+      emitSetlistChanged(groupId, request.params.id);
       return { status: 'ok' };
     },
   );
@@ -182,6 +186,7 @@ export const setlistsRoutes: FastifyPluginAsync<SetlistsOptions> = async (
       const failure = itemError(reply, result);
       if (failure) return failure;
       if (result.ok) {
+        emitSetlistChanged(groupId, request.params.id);
         return reply.code(201).send({
           item: result.item,
           setlistVersion: result.setlistVersion,
@@ -211,6 +216,7 @@ export const setlistsRoutes: FastifyPluginAsync<SetlistsOptions> = async (
       const failure = itemError(reply, result);
       if (failure) return failure;
       if (result.ok) {
+        emitSetlistChanged(groupId, request.params.id);
         return {
           item: result.item,
           setlistVersion: result.setlistVersion,
@@ -240,6 +246,7 @@ export const setlistsRoutes: FastifyPluginAsync<SetlistsOptions> = async (
       const failure = itemError(reply, result);
       if (failure) return failure;
       if (result.ok) {
+        emitSetlistChanged(groupId, request.params.id);
         return { items: result.items, setlistVersion: result.setlistVersion };
       }
     },
@@ -269,6 +276,7 @@ export const setlistsRoutes: FastifyPluginAsync<SetlistsOptions> = async (
       const failure = itemError(reply, result);
       if (failure) return failure;
       if (result.ok) {
+        emitSetlistChanged(groupId, request.params.id);
         return { items: result.items, setlistVersion: result.setlistVersion };
       }
     },

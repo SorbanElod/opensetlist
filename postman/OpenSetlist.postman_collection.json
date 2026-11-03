@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "OpenSetlist API",
-    "description": "Manual walkthrough for session auth (#7) and role enforcement (#14).\n\nBefore starting: `docker compose down -v && docker compose up -d db && pnpm -C api db:migrate` gives you a fresh database (the existing dev data is all test junk).\n\nPostman automatically stores and sends cookies per domain, so Register/Login keep you logged in across requests. To test the guest-vs-manager flow, log out (or switch user via Login) between the two roles.\n\nExpected flow on a fresh database:\n1. Register -> first user becomes group_manager of the lazily created single group\n2. Register again (second user) -> joins as member\n3. List members -> see both roles\n4. As the second user: PATCH/DELETE -> 403\n5. As the first user: PATCH role, DELETE member -> 200\n6. Demote the only manager -> 409 (last-manager lockout guard)\n7. Songs folder: Create song -> songId saved as a collection variable\n8. Arrangements folder: List/Create under {{songId}} (Create saves arrangementId), then Get/Update/Delete by id — Update with a stale version demonstrates the 409\n\nMaintenance rule (AGENTS.md): every new endpoint lands together with its entry here, including example responses.",
+    "description": "Manual walkthrough for session auth (#7) and role enforcement (#14).\n\nBefore starting: `docker compose down -v && docker compose up -d db && pnpm -C api db:migrate` gives you a fresh database (the existing dev data is all test junk).\n\nPostman automatically stores and sends cookies per domain, so Register/Login keep you logged in across requests. To test the guest-vs-manager flow, log out (or switch user via Login) between the two roles.\n\nExpected flow on a fresh database:\n1. Register -> first user becomes group_manager of the lazily created single group\n2. Register again (second user) -> joins as member\n3. List members -> see both roles\n4. As the second user: PATCH/DELETE -> 403\n5. As the first user: PATCH role, DELETE member -> 200\n6. Demote the only manager -> 409 (last-manager lockout guard)\n7. Songs folder: Create song -> songId saved as a collection variable\n8. Arrangements folder: List/Create under {{songId}} (Create saves arrangementId), then Get/Update/Delete by id — Update with a stale version demonstrates the 409\n\nMaintenance rule (AGENTS.md): every new endpoint lands together with its entry here, including example responses.\n\nRealtime: the `realtime` folder documents the Socket.IO live-update event (#13) — connect it and run any mutation to see `setlist:changed` arrive.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -1801,6 +1801,32 @@
               "body": "{\n  \"message\": \"Not found\"\n}"
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "realtime",
+      "description": "Live updates (#13): Socket.IO on the same HTTP server, per-group rooms, notify-only. The handshake is auth-checked with the same session cookie as the REST API (Postman sends stored cookies automatically) — no cookie, no connection. Open the request below and connect, then run any mutation in the songs/arrangements/setlists folders and watch the event arrive.",
+      "item": [
+        {
+          "name": "Listen: setlist:changed",
+          "request": {
+            "url": "ws://localhost:3000",
+            "protocol": "socketio"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Runs for every setlist:changed the server emits to your group room.",
+                  "console.log('setlist:changed', pm.eventData);"
+                ]
+              }
+            }
+          ],
+          "description": "Event `setlist:changed`, payload `{ \"setlistId\": \"<uuid>\" | null }`. Emitted to room `group:<groupId>` on every setlist/song/arrangement mutation (setlistId set for setlist changes, null for library-wide changes). Clients refetch on this event and on window focus — notify-only, no diff/OT sync. Stale writes return 409 (see the Update requests' 409 examples in the other folders)."
         }
       ]
     }
