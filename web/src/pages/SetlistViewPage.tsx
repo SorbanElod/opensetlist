@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import {
   ArrowLeft,
@@ -123,10 +123,11 @@ export function SetlistViewPage() {
       : mode === 'one'
         ? detail.items.slice(currentIndex, currentIndex + 1)
         : detail.items;
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  // Item changed -> panel scrolls back to the beginning of the item.
+  // Item changed in 'one' mode -> the PAGE scrolls back to the beginning of
+  // the item (no nested scroll containers — the item renders at full height
+  // and the page-level scroll handles it).
   useEffect(() => {
-    if (panelRef.current) panelRef.current.scrollTop = 0;
+    document.documentElement.scrollTop = 0;
   }, [currentIndex, mode]);
 
   return (
@@ -290,14 +291,7 @@ export function SetlistViewPage() {
                   </button>
                 </div>
               )}
-              <div
-                ref={mode === 'one' ? panelRef : undefined}
-                className={
-                  mode === 'one'
-                    ? 'h-[calc(100svh-15rem)] overflow-y-auto'
-                    : undefined
-                }
-              >
+              <>
                 {visibleItems.map((item) => {
                   const arrangement = item.arrangementId
                     ? arrangements.get(item.arrangementId)
@@ -376,7 +370,7 @@ export function SetlistViewPage() {
                     </div>
                   );
                 })}
-              </div>
+              </>
             </>
           )}
         </>
