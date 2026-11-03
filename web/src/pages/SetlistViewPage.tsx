@@ -224,35 +224,33 @@ export function SetlistViewPage() {
                 <Mic size={14} /> Lyrics
               </button>
             </div>
-            {view !== 'sheet' && (
-              <div
-                className="inline-flex items-center rounded-md border border-border bg-bg p-0.5"
-                role="group"
-                aria-label="Zoom"
+            <div
+              className="inline-flex items-center rounded-md border border-border bg-bg p-0.5"
+              role="group"
+              aria-label="Zoom"
+            >
+              <button
+                type="button"
+                aria-label="Zoom out"
+                disabled={scale <= ZOOM_MIN}
+                onClick={() => zoomBy(-0.1)}
+                className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
               >
-                <button
-                  type="button"
-                  aria-label="Zoom out"
-                  disabled={scale <= ZOOM_MIN}
-                  onClick={() => zoomBy(-0.1)}
-                  className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
-                >
-                  <Minus size={13} />
-                </button>
-                <span className="w-9 text-center text-[11px] tabular-nums text-muted">
-                  {Math.round(scale * 100)}%
-                </span>
-                <button
-                  type="button"
-                  aria-label="Zoom in"
-                  disabled={scale >= ZOOM_MAX}
-                  onClick={() => zoomBy(0.1)}
-                  className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
-                >
-                  <Plus size={13} />
-                </button>
-              </div>
-            )}
+                <Minus size={13} />
+              </button>
+              <span className="w-9 text-center text-[11px] tabular-nums text-muted">
+                {Math.round(scale * 100)}%
+              </span>
+              <button
+                type="button"
+                aria-label="Zoom in"
+                disabled={scale >= ZOOM_MAX}
+                onClick={() => zoomBy(0.1)}
+                className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
+              >
+                <Plus size={13} />
+              </button>
+            </div>
           </div>
 
           {detail.items.length === 0 ? (
@@ -324,49 +322,65 @@ export function SetlistViewPage() {
                       className="card mb-3 p-5"
                       data-testid="setlist-view-item"
                     >
-                      <div className="mb-3 flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex items-baseline gap-2">
-                            <span className="font-mono text-[12px] text-subtle">
-                              {item.position}
-                            </span>
-                            <h2 className="truncate text-[15px] font-bold tracking-tight">
-                              {item.arrangement.songTitle} — {arrangement.title}
-                            </h2>
-                          </div>
-                          <p className="mt-0.5 font-mono text-[12px] text-muted">
-                            {arrangement.originalKey}
-                            {item.transposedKey
-                              ? ` → ${item.transposedKey}`
-                              : ''}
-                            {arrangement.bpm !== null
-                              ? ` · ${arrangement.bpm} BPM`
-                              : ''}
-                          </p>
-                          {item.notes && (
-                            <p className="mt-1 text-[12.5px] text-muted">
-                              {item.notes}
-                            </p>
-                          )}
-                        </div>
-                        <Link
-                          to={`/arrangements/${arrangement.id}`}
-                          className="btn btn-ghost shrink-0 px-1.5"
-                          aria-label={`Open ${item.arrangement.songTitle} arrangement page`}
-                        >
-                          <Eye size={15} />
-                        </Link>
-                      </div>
-                      <ArrangementRenderer
-                        arrangement={arrangement}
-                        sequence={
-                          item.effectiveSequence ?? arrangement.defaultSequence
+                      {/* Item-level zoom wrapper for text views: the header
+                          (title, key badge, notes) scales together with the
+                          sections. Sheet view is excluded — a responsive SVG
+                          ignores CSS zoom; there the staff scales via abcjs's
+                          own scale param inside the renderer. */}
+                      <div
+                        style={
+                          view === 'sheet'
+                            ? {}
+                            : { zoom: scale, width: `${100 / scale}%` }
                         }
-                        transposedKey={item.transposedKey}
-                        view={view}
-                        scale={scale}
-                        bare
-                      />
+                      >
+                        <div className="mb-3 flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-baseline gap-2">
+                              <span className="font-mono text-[12px] text-subtle">
+                                {item.position}
+                              </span>
+                              <h2 className="truncate text-[15px] font-bold tracking-tight">
+                                {item.arrangement.songTitle} —{' '}
+                                {arrangement.title}
+                              </h2>
+                            </div>
+                            <p className="mt-0.5 font-mono text-[12px] text-muted">
+                              {arrangement.originalKey}
+                              {item.transposedKey
+                                ? ` → ${item.transposedKey}`
+                                : ''}
+                              {arrangement.bpm !== null
+                                ? ` · ${arrangement.bpm} BPM`
+                                : ''}
+                            </p>
+                            {item.notes && (
+                              <p className="mt-1 text-[12.5px] text-muted">
+                                {item.notes}
+                              </p>
+                            )}
+                          </div>
+                          <Link
+                            to={`/arrangements/${arrangement.id}`}
+                            className="btn btn-ghost shrink-0 px-1.5"
+                            aria-label={`Open ${item.arrangement.songTitle} arrangement page`}
+                          >
+                            <Eye size={15} />
+                          </Link>
+                        </div>
+                        <ArrangementRenderer
+                          arrangement={arrangement}
+                          sequence={
+                            item.effectiveSequence ??
+                            arrangement.defaultSequence
+                          }
+                          transposedKey={item.transposedKey}
+                          view={view}
+                          scale={scale}
+                          bare
+                          applyZoom={false}
+                        />
+                      </div>
                     </div>
                   );
                 })}

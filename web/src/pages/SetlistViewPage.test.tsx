@@ -2,7 +2,13 @@
 // abcjs draws real SVG; in jsdom we only assert what ABC the page hands it.
 vi.mock('abcjs', () => ({ renderAbc: vi.fn() }));
 
-import { cleanup, fireEvent, screen, within } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderAbc } from 'abcjs';
 
@@ -237,6 +243,45 @@ describe('SetlistViewPage', () => {
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
     expect(await screen.findByText('Soundcheck at 9:00')).toBeTruthy();
     expect(screen.getByText(/2 \/ 3/)).toBeTruthy();
+  });
+
+  it('scales the whole item (notes included) in text views via the item-level zoom wrapper', async () => {
+    stubApi();
+    const { container } = renderApp('/setlists/sl1/view');
+
+    await screen.findByText(/Amazing Grace — Default/);
+    // Default view is chords: the item card's zoom wrapper starts at 100%.
+    const itemWrapper = container.querySelector(
+      '[data-testid="setlist-view-item"] > div',
+    )!;
+    expect(itemWrapper.getAttribute('style')).toMatch(/zoom:\s*1(;|$)/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    // The wrapper holding header + notes + sections scales together.
+    expect(itemWrapper.getAttribute('style')).toContain('zoom: 1.1');
+    expect(screen.getByText('Start slow')).toBeTruthy();
+  });
+
+  it('zooms the sheet view through the abcjs scale param', async () => {
+    stubApi();
+    renderApp('/setlists/sl1/view');
+
+    await screen.findByText(/Amazing Grace — Default/);
+    fireEvent.click(screen.getByRole('button', { name: /sheet/i }));
+    await waitFor(() => {
+      expect(vi.mocked(renderAbc).mock.calls.length).toBeGreaterThan(0);
+    });
+    // 100%: fit-to-width responsive render.
+    expect(vi.mocked(renderAbc).mock.calls[0]![2]).toEqual({
+      responsive: 'resize',
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    await waitFor(() => {
+      expect(vi.mocked(renderAbc).mock.calls.at(-1)![2]).toEqual({
+        scale: 1.1,
+      });
+    });
   });
 
   it('applies the top-level view toggle to all items', async () => {

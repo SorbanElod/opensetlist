@@ -29,6 +29,7 @@ export function ArrangementRenderer({
   view: viewProp,
   scale: scaleProp,
   bare,
+  applyZoom,
 }: {
   arrangement: Arrangement;
   // Optional control docked at the right end of the view-toggle row (the
@@ -46,6 +47,9 @@ export function ArrangementRenderer({
   // bare: render the sections panel without its own .card — for pages that
   // already wrap the renderer in a card (avoids concentric cards).
   bare?: boolean;
+  // applyZoom: false lets the parent own the CSS zoom wrapper (setlist view
+  // wraps the whole item, so notes and the header scale too).
+  applyZoom?: boolean;
 }) {
   const auth = useAuth();
 
@@ -117,7 +121,15 @@ export function ArrangementRenderer({
     // Sheet view: no zoom for now (abcjs responsive mode ignores its scale
     // param and CSS zoom truncates the staff — follow-up issue). Text views
     // scale via the compensated zoom wrapper around all sections.
-    if (view === 'sheet') return <AbcRenderer abc={sheetAbc(content)} />;
+    // Sheet view: zoom goes through abcjs's own scale param (AbcRenderer);
+    // text views scale via the CSS zoom wrapper below.
+    if (view === 'sheet')
+      return (
+        <AbcRenderer
+          abc={sheetAbc(content)}
+          scale={scale === 1 ? undefined : scale}
+        />
+      );
     if (view === 'chords') return <ChordChartView abc={content} />;
     const text = lyricsText(content);
     return text.trim() ? (
@@ -168,9 +180,9 @@ export function ArrangementRenderer({
             </button>
           </div>
         )}
-        {/* Zoom is hidden in sheet view for now — scaling the abcjs staff
-            without truncating it needs a follow-up (see issue). */}
-        {scaleProp === undefined && view !== 'sheet' && (
+        {/* Zoom is available in every view: text views scale via CSS zoom,
+            the sheet view via abcjs's own scale param (issue #59). */}
+        {scaleProp === undefined && (
           <div
             className="inline-flex items-center rounded-md border border-border bg-bg p-0.5"
             role="group"
@@ -235,11 +247,17 @@ export function ArrangementRenderer({
         {/* Text views: `zoom` scales text, labels and the spacing between
             sections; the width compensation keeps the card at its normal
             on-screen width (text wraps, nothing is cut off). Sheet view:
-            no compensation here — the SVG scales via its own zoom wrapper
-            and scrolls inside the section instead of overflowing the page. */}
+            no CSS zoom (a responsive SVG would not scale — abcjs's scale
+            param handles it in AbcRenderer); overflow-x-auto lets a zoomed
+            staff scroll horizontally instead of being truncated. When
+            applyZoom is false the parent owns the zoom wrapper (setlist
+            view: the item header and notes scale too). */}
         <div
+          className={view === 'sheet' ? 'overflow-x-auto' : undefined}
           style={
-            view === 'sheet' ? {} : { zoom: scale, width: `${100 / scale}%` }
+            view === 'sheet' || applyZoom === false
+              ? {}
+              : { zoom: scale, width: `${100 / scale}%` }
           }
           data-testid="scaled-content"
         >
