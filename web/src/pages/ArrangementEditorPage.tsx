@@ -434,9 +434,9 @@ export function ArrangementEditorPage() {
               </ol>
             )}
             {canEdit && (
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2">
                 <select
-                  className="input flex-1"
+                  className="input"
                   aria-label="Add section to sequence"
                   value={sequenceToAdd}
                   onChange={(e) => setSequenceToAdd(e.target.value)}
@@ -450,7 +450,7 @@ export function ArrangementEditorPage() {
                 </select>
                 <button
                   type="button"
-                  className="btn btn-outline"
+                  className="btn btn-outline btn-block"
                   onClick={addToSequence}
                   disabled={!sequenceToAdd.trim()}
                 >
@@ -484,9 +484,11 @@ export function ArrangementEditorPage() {
                 No sections yet. Add one to start writing ABC notation.
               </p>
             )}
-            <div className="flex flex-col gap-3">
+            {/* All sections in ONE panel, separated by whitespace only —
+                not one card per section (matches the view pages). */}
+            <div className="card px-4 py-2">
               {sections.map((section, i) => (
-                <div key={i} className="card p-4">
+                <section key={i} className="py-3">
                   <div className="mb-1 flex items-center justify-between gap-2">
                     <label
                       className="flabel mb-0"
@@ -536,7 +538,7 @@ export function ArrangementEditorPage() {
                     }
                   />
                   <label className="flabel" htmlFor={`section-${i}-abc`}>
-                    ABC
+                    ABC notation
                   </label>
                   <AutoTextarea
                     id={`section-${i}-abc`}
@@ -548,7 +550,7 @@ export function ArrangementEditorPage() {
                       updateSection(i, { content: e.target.value })
                     }
                   />
-                </div>
+                </section>
               ))}
             </div>
           </div>
