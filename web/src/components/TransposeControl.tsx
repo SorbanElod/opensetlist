@@ -33,7 +33,7 @@ export function TransposeControl({
         <Minus size={14} />
       </button>
       <span
-        className="flex h-[36px] w-10 items-center justify-center font-mono text-[11px] tabular-nums text-muted"
+        className="flex h-[40px] w-10 items-center justify-center font-mono text-[11px] tabular-nums text-muted"
         title={`Key: ${effectiveKey}${keyOffset !== 0 ? ` (${keyOffset > 0 ? `+${keyOffset}` : keyOffset} from ${baseKey})` : ''}`}
       >
         {effectiveKey}

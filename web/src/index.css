@@ -102,7 +102,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  min-height: 40px; /* tap target on mobile (design rule: >= 40px) */
+  min-height: 44px; /* same height as .input — one control height everywhere */
   padding: 8px 14px;
   border: 1px solid transparent;
   border-radius: 6px;
@@ -189,8 +189,8 @@ body {
 }
 
 /* Segmented controls (view/layout toggles, zoom, transpose): ONE shared
-   look — the group is 40px tall overall, matching .btn's tap target; the
-   active segment is the primary accent, not a grey fill. */
+   look — the group is 44px tall overall, matching .btn/.input; the active
+   segment is the primary accent, not a grey fill. */
 @utility seg-group {
   display: inline-flex;
   align-items: center;
@@ -206,7 +206,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 36px;
+  height: 40px;
   padding: 0 12px;
   border-radius: 4px;
   font-size: 13px;
@@ -221,17 +221,17 @@ body {
 }
 
 @utility seg-btn-icon {
-  width: 36px;
+  width: 40px;
   padding: 0;
 }
 
-/* Standalone icon-only button: same 40px tap target as .btn. */
+/* Standalone icon-only button: same 44px tap target as .btn/.input. */
 @utility icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 6px;
   color: var(--color-muted);
   cursor: pointer;

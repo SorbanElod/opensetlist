@@ -216,7 +216,7 @@ export function ArrangementRenderer({
               >
                 <Minus size={14} />
               </button>
-              <span className="flex h-[36px] w-9 items-center justify-center text-[11px] tabular-nums text-muted">
+              <span className="flex h-[40px] w-9 items-center justify-center text-[11px] tabular-nums text-muted">
                 {Math.round(scale * 100)}%
               </span>
               <button
