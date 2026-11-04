@@ -108,10 +108,9 @@ describe('ArrangementEditorPage', () => {
     fireEvent.change(screen.getByLabelText('Section 1 ABC content'), {
       target: { value: 'X:1\nK:G\nG2 G2 |' },
     });
-    fireEvent.change(screen.getByLabelText('Add section to sequence'), {
-      target: { value: 'V1' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
+    // Add to sequence: click Add, then pick the section in the popup
+    fireEvent.click(screen.getByRole('button', { name: /add to sequence/i }));
+    fireEvent.click(await screen.findByRole('button', { name: 'V1' }));
     fireEvent.click(screen.getByRole('button', { name: /save arrangement/i }));
 
     // Navigated to the song detail page of the created arrangement.

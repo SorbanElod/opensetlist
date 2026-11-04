@@ -22,6 +22,7 @@ import { getSetlist, type SetlistDetail } from '../api/setlists';
 import { useLiveRefetch } from '../api/useLiveRefetch';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 import { ArrangementRenderer } from '../components/ArrangementRenderer';
+import { TransposeControl } from '../components/TransposeControl';
 import { PageHeader } from '../components/PageHeader';
 import { zoomStyle, type ViewMode } from '../lib/abcViews';
 
@@ -52,6 +53,9 @@ export function SetlistViewPage() {
   const ZOOM_MIN = 0.5;
   const ZOOM_MAX = 1.5;
   const [scale, setScale] = useState(1);
+  // Per-item live transpose offsets (render-time only; the saved per-item
+  // key is the item's transposedKey override, edited on the detail page).
+  const [keyOffsets, setKeyOffsets] = useState<Record<string, number>>({});
   function zoomBy(delta: number) {
     setScale((s) =>
       Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round((s + delta) * 10) / 10)),
@@ -111,11 +115,6 @@ export function SetlistViewPage() {
   const canEdit =
     auth.status === 'authenticated' && canWrite(role, auth.user.isSuperadmin);
 
-  const segmentClass = (active: boolean) =>
-    `flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-semibold transition-colors ${
-      active ? 'bg-raised text-text' : 'text-muted hover:text-text'
-    }`;
-
   // In 'one' mode only the current item is rendered, inside a
   // viewport-height panel (short up/down scroll within the item).
   const visibleItems =
@@ -173,14 +172,10 @@ export function SetlistViewPage() {
           />
 
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <div
-              className="inline-flex rounded-md border border-border bg-bg p-0.5"
-              role="group"
-              aria-label="Layout"
-            >
+            <div className="seg-group" role="group" aria-label="Layout">
               <button
                 type="button"
-                className={segmentClass(mode === 'all')}
+                className="seg-btn"
                 aria-pressed={mode === 'all'}
                 onClick={() => setMode('all')}
               >
@@ -188,21 +183,17 @@ export function SetlistViewPage() {
               </button>
               <button
                 type="button"
-                className={segmentClass(mode === 'one')}
+                className="seg-btn"
                 aria-pressed={mode === 'one'}
                 onClick={() => setMode('one')}
               >
                 <Focus size={14} /> One at a time
               </button>
             </div>
-            <div
-              className="inline-flex rounded-md border border-border bg-bg p-0.5"
-              role="group"
-              aria-label="View"
-            >
+            <div className="seg-group" role="group" aria-label="View">
               <button
                 type="button"
-                className={segmentClass(view === 'sheet')}
+                className="seg-btn"
                 aria-pressed={view === 'sheet'}
                 onClick={() => setView('sheet')}
               >
@@ -210,7 +201,7 @@ export function SetlistViewPage() {
               </button>
               <button
                 type="button"
-                className={segmentClass(view === 'chords')}
+                className="seg-btn"
                 aria-pressed={view === 'chords'}
                 onClick={() => setView('chords')}
               >
@@ -218,7 +209,7 @@ export function SetlistViewPage() {
               </button>
               <button
                 type="button"
-                className={segmentClass(view === 'lyrics')}
+                className="seg-btn"
                 aria-pressed={view === 'lyrics'}
                 onClick={() => setView('lyrics')}
               >
@@ -235,11 +226,11 @@ export function SetlistViewPage() {
                 aria-label="Zoom out"
                 disabled={scale <= ZOOM_MIN}
                 onClick={() => zoomBy(-0.1)}
-                className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
+                className="seg-btn seg-btn-icon disabled:opacity-40"
               >
                 <Minus size={13} />
               </button>
-              <span className="w-9 text-center text-[11px] tabular-nums text-muted">
+              <span className="flex h-[40px] w-9 items-center justify-center text-[11px] tabular-nums text-muted">
                 {Math.round(scale * 100)}%
               </span>
               <button
@@ -247,7 +238,7 @@ export function SetlistViewPage() {
                 aria-label="Zoom in"
                 disabled={scale >= ZOOM_MAX}
                 onClick={() => zoomBy(0.1)}
-                className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
+                className="seg-btn seg-btn-icon disabled:opacity-40"
               >
                 <Plus size={13} />
               </button>
@@ -302,15 +293,15 @@ export function SetlistViewPage() {
                         data-testid="setlist-view-item"
                         style={view === 'sheet' ? {} : zoomStyle(scale)}
                       >
-                        <div className="card mb-3 flex items-start gap-2.5 p-4">
-                          <StickyNote
-                            size={16}
-                            className="mt-0.5 shrink-0 text-accent"
-                          />
-                          <div className="min-w-0">
-                            <span className="font-mono text-[12px] text-subtle">
-                              {item.position}
-                            </span>
+                        <div className="card mb-3 flex items-start gap-3 p-4">
+                          <span className="mt-0.5 w-6 shrink-0 text-right font-mono text-[12px] tabular-nums text-subtle">
+                            {item.position}
+                          </span>
+                          <div className="flex min-w-0 flex-1 items-start gap-2">
+                            <StickyNote
+                              size={16}
+                              className="mt-0.5 shrink-0 text-accent"
+                            />
                             <p className="whitespace-pre-wrap break-words text-[13.5px]">
                               {item.notes}
                             </p>
@@ -332,17 +323,14 @@ export function SetlistViewPage() {
                       style={view === 'sheet' ? {} : zoomStyle(scale)}
                     >
                       <div className="card mb-3 p-5">
-                        <div className="mb-3 flex items-start justify-between gap-3">
+                        <div className="mb-3 flex items-start gap-3">
+                          <span className="mt-0.5 w-6 shrink-0 text-right font-mono text-[12px] tabular-nums text-subtle">
+                            {item.position}
+                          </span>
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-baseline gap-2">
-                              <span className="font-mono text-[12px] text-subtle">
-                                {item.position}
-                              </span>
-                              <h2 className="truncate text-[15px] font-bold tracking-tight">
-                                {item.arrangement.songTitle} —{' '}
-                                {arrangement.title}
-                              </h2>
-                            </div>
+                            <h2 className="text-[15px] font-bold tracking-tight">
+                              {item.arrangement.songTitle} — {arrangement.title}
+                            </h2>
                             <p className="mt-0.5 font-mono text-[12px] text-muted">
                               {arrangement.originalKey}
                               {item.transposedKey
@@ -358,13 +346,29 @@ export function SetlistViewPage() {
                               </p>
                             )}
                           </div>
-                          <Link
-                            to={`/arrangements/${arrangement.id}`}
-                            className="btn btn-ghost shrink-0 px-1.5"
-                            aria-label={`Open ${item.arrangement.songTitle} arrangement page`}
-                          >
-                            <Eye size={15} />
-                          </Link>
+                          {/* Live transpose at the item's upper right corner
+                              (render-time only; saved key = transposedKey). */}
+                          <div className="flex shrink-0 items-center gap-1.5">
+                            <TransposeControl
+                              baseKey={
+                                item.transposedKey ?? arrangement.originalKey
+                              }
+                              keyOffset={keyOffsets[item.id] ?? 0}
+                              onKeyOffsetChange={(o) =>
+                                setKeyOffsets((prev) => ({
+                                  ...prev,
+                                  [item.id]: o,
+                                }))
+                              }
+                            />
+                            <Link
+                              to={`/arrangements/${arrangement.id}`}
+                              className="icon-btn shrink-0"
+                              aria-label={`Open ${item.arrangement.songTitle} arrangement page`}
+                            >
+                              <Eye size={15} />
+                            </Link>
+                          </div>
                         </div>
                         <ArrangementRenderer
                           arrangement={arrangement}
@@ -375,6 +379,13 @@ export function SetlistViewPage() {
                           transposedKey={item.transposedKey}
                           view={view}
                           scale={scale}
+                          keyOffset={keyOffsets[item.id] ?? 0}
+                          onKeyOffsetChange={(o) =>
+                            setKeyOffsets((prev) => ({
+                              ...prev,
+                              [item.id]: o,
+                            }))
+                          }
                           bare
                           applyZoom={false}
                         />

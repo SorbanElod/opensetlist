@@ -63,6 +63,28 @@ function transposeChord(chord: string, delta: number): string {
     .join('/');
 }
 
+// The key `semitones` away from `key`, spelled per the KEYS enum (wraps).
+// Used by the view's +/- transpose control.
+export function keyAtOffset(key: string, semitones: number): string {
+  const KEYS = [
+    'C',
+    'C#',
+    'D',
+    'Eb',
+    'E',
+    'F',
+    'F#',
+    'G',
+    'Ab',
+    'A',
+    'Bb',
+    'B',
+  ];
+  const i = KEYS.indexOf(key);
+  if (i < 0) return key;
+  return KEYS[(((i + semitones) % 12) + 12) % 12]!;
+}
+
 // Transpose an ABC source from one key to another. Returns the input
 // unchanged when either key is unknown or the delta is 0.
 export function transposeAbc(
@@ -91,11 +113,18 @@ export function transposeAbc(
         }
         return line;
       }
-      // Music line: transpose quoted chord symbols only.
-      return line.replace(
-        /"([^"]*)"/g,
-        (_all, chord: string) => `"${transposeChord(chord, delta)}"`,
-      );
+      // Music line: transpose the note letters (A-G/a-g — rests z/Z, bar
+      // lines and decorations are not pitches and stay) AND the quoted chord
+      // symbols. Quoted and unquoted segments are handled separately so chord
+      // text is never note-transposed.
+      return line
+        .split(/("[^"]*")/)
+        .map((part) =>
+          part.startsWith('"')
+            ? `"${transposeChord(part.slice(1, -1), delta)}"`
+            : part.replace(/[A-Ga-g]/g, (note) => transposeNote(note, delta)),
+        )
+        .join('');
     })
     .join('\n');
 }

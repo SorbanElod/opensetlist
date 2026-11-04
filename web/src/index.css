@@ -102,7 +102,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  min-height: 40px; /* tap target on mobile (design rule: >= 40px) */
+  min-height: 44px; /* same height as .input — one control height everywhere */
   padding: 8px 14px;
   border: 1px solid transparent;
   border-radius: 6px;
@@ -188,6 +188,58 @@ body {
   font-size: 13px;
 }
 
+/* Segmented controls (view/layout toggles, zoom, transpose): ONE shared
+   look — the group is 44px tall overall, matching .btn/.input; the active
+   segment is the primary accent, not a grey fill. */
+@utility seg-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-bg);
+  padding: 2px;
+}
+
+@utility seg-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-muted);
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+@utility seg-btn-icon {
+  width: 40px;
+  padding: 0;
+}
+
+/* Standalone icon-only button: same 44px tap target as .btn/.input. */
+@utility icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
 /* State styles (plain CSS: no built-in utility sets these on our classes). */
 
 .btn:active {
@@ -205,6 +257,20 @@ body {
 
 .list-row:hover {
   background: var(--color-raised);
+}
+
+.seg-btn:hover {
+  color: var(--color-text);
+}
+
+.seg-btn[aria-pressed='true'] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.icon-btn:hover {
+  background: var(--color-raised);
+  color: var(--color-text);
 }
 
 .btn-outline:hover,
