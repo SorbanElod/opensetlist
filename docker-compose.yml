@@ -19,7 +19,10 @@ services:
     ports:
       - '${POSTGRES_PORT:-5432}:5432'
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # PG18 images keep data in a major-version subdirectory — mount the
+      # volume at /var/lib/postgresql, NOT .../data (the 18 entrypoint
+      # refuses to start with a mount at the old path).
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test:
         [

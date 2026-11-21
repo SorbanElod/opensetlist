@@ -57,7 +57,11 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: opensetlist
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # PG18 images keep data in a major-version subdirectory — mount at
+      # /var/lib/postgresql, NOT .../data (the 18 entrypoint refuses the
+      # old path). Critical on first deploy: a fresh volume at .../data
+      # makes the postgres container exit immediately.
+      - pgdata:/var/lib/postgresql
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U opensetlist']
       interval: 5s
