@@ -368,6 +368,67 @@ describe.skipIf(!dbUrl)('songs routes', () => {
     expect(res.json().message).toBe('Invalid input');
   });
 
+  it('imports melody-less sections cleanly (chords over rests + w: lines) — issue #69', async () => {
+    const { token } = await registerUser();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/songs/import',
+      cookies: { [auth.SESSION_COOKIE]: token },
+      payload: {
+        songs: [
+          {
+            title: `Táruljatok fel ${randomUUID()}`,
+            authors: { lyrics: 'Photo chord sheet' },
+            arrangements: [
+              {
+                title: 'Chord sheet (no melody)',
+                original_key: 'G',
+                bpm: 80,
+                default_sequence: ['V1', 'V1', 'V1', 'R1', 'R1', 'R1'],
+                sections: [
+                  {
+                    label: 'V1',
+                    // No music lines with pitches — a photo-converted chord
+                    // sheet is first-class, no placeholder melody needed.
+                    content:
+                      'X:1\nT:V1\nK:G\n"G" z4 | "C" z4 |\nw: Tá-ru-la-tok fel',
+                  },
+                  {
+                    label: 'R1',
+                    content: 'X:1\nK:G\n"G" z2 | "D" z2 |\nw: Ég-nek Fia',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    const body = res.json();
+    expect(body.imported).toBe(1);
+    expect(body.arrangementsImported).toBe(1);
+
+    // The sheet-less sections landed verbatim, repeats in the sequence kept.
+    const arrList = await app.inject({
+      method: 'GET',
+      url: `/api/songs/${body.songs[0].id}/arrangements`,
+      cookies: { [auth.SESSION_COOKIE]: token },
+    });
+    expect(arrList.statusCode).toBe(200);
+    const arrangement = arrList.json().arrangements[0];
+    expect(arrangement.defaultSequence).toEqual([
+      'V1',
+      'V1',
+      'V1',
+      'R1',
+      'R1',
+      'R1',
+    ]);
+    expect(arrangement.sections).toHaveLength(2);
+    expect(arrangement.sections[0].content).toContain('"G" z4');
+  });
+
   it('filters songs via POST /api/songs/query (and/or/search, tags normalized)', async () => {
     const { token } = await registerUser();
     const cookies = { [auth.SESSION_COOKIE]: token };
