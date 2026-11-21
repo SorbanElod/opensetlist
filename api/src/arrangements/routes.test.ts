@@ -259,6 +259,42 @@ describe.skipIf(!dbUrl)('arrangements routes', () => {
     expect(issues.some((i) => i.path === 'sections')).toBe(true);
   });
 
+  it('accepts a sheet-less arrangement (chords over rests + w: lines, no music lines) with 201 — issue #69', async () => {
+    const { token } = await registerUser();
+    const song = await createSong(token);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/songs/${song.id}/arrangements`,
+      payload: {
+        title: 'Chord sheet',
+        originalKey: 'G',
+        bpm: 80,
+        // Repeats are legal in the sequence, sheet-less or not.
+        defaultSequence: ['V1', 'V1', 'V1', 'R1'],
+        sections: [
+          {
+            label: 'V1',
+            // No pitch notes: chord symbols over rests, lyrics on w: lines
+            // (the photo-chord-sheet convention). Validation must NOT
+            // require music lines.
+            content: 'X:1\nT:V1\nK:G\n"G" z4 | "C" z4 |\nw: Tá-ru-la-tok fel',
+          },
+          {
+            label: 'R1',
+            content: 'X:1\nK:G\n"G" z2 | "D" z2 |\nw: Ég-nek Fia',
+          },
+        ],
+      },
+      cookies: { [auth.SESSION_COOKIE]: token },
+    });
+
+    expect(res.statusCode).toBe(201);
+    const arrangement = res.json().arrangement;
+    expect(arrangement.sections).toHaveLength(2);
+    expect(arrangement.defaultSequence).toEqual(['V1', 'V1', 'V1', 'R1']);
+  });
+
   it('rejects an invalid key and a missing version with 400 before touching the DB', async () => {
     const { token } = await registerUser();
     const song = await createSong(token);

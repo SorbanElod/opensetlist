@@ -12,6 +12,7 @@ import {
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderAbc } from 'abcjs';
 
+import type { DefaultView } from '../api/auth';
 import type { SetlistDetail } from '../api/setlists';
 import { renderApp } from '../test/renderApp';
 import { stubFetch } from '../test/fetchMock';
@@ -303,5 +304,118 @@ describe('SetlistViewPage', () => {
     // Lyrics of both arrangement items are visible after one click.
     expect(await screen.findByText('Amazing grace')).toBeTruthy();
     expect(screen.getByText('Joy to the world')).toBeTruthy();
+  });
+
+  it('issue #69: compact by default — consecutive repeats collapse to a ×N badge; the page toggle expands all items', async () => {
+    const detail: SetlistDetail = {
+      ...DETAIL,
+      items: DETAIL.items.map((i) =>
+        i.id === 'i3'
+          ? {
+              ...i,
+              customSequence: ['C1', 'C1', 'C1', 'V1'],
+              effectiveSequence: ['C1', 'C1', 'C1', 'V1'],
+            }
+          : i,
+      ),
+    };
+    stubFetch((path, init) => {
+      if (path === '/api/auth/me')
+        return {
+          status: 200,
+          body: {
+            user: USER,
+            memberships: [{ groupId: 'g1', role: 'member' }],
+          },
+        };
+      if (path === '/api/setlists/sl1' && (init?.method ?? 'GET') === 'GET')
+        return { status: 200, body: detail };
+      if (path === '/api/arrangements/a1')
+        return { status: 200, body: { arrangement: ARRANGEMENT_A1 } };
+      if (path === '/api/arrangements/a2')
+        return { status: 200, body: { arrangement: ARRANGEMENT_A2 } };
+      return { status: 404, body: {} };
+    });
+    const { container } = renderApp('/setlists/sl1/view');
+    await screen.findByText(/Joy to the World — Standard/);
+
+    // Section headings live in the arrangement-sections panel (the item
+    // title is an h2 too, so scope to the panel).
+    const thirdSections = () => {
+      const cards = Array.from(
+        container.querySelectorAll('[data-testid="setlist-view-item"]'),
+      );
+      return within(cards[2] as HTMLElement).getByTestId(
+        'arrangement-sections',
+      );
+    };
+    const itemHeadings = () =>
+      within(thirdSections())
+        .getAllByRole('heading', { level: 2 })
+        .map((h) => h.textContent);
+    // Compact (default): C1 ×3 renders once, then V1.
+    expect(itemHeadings()).toEqual(['C1×3', 'V1']);
+    expect(
+      within(thirdSections())
+        .getAllByTestId('repeat-badge')
+        .map((b) => b.textContent),
+    ).toEqual(['×3']);
+
+    // The page-level toggle expands every item back to the linear list.
+    fireEvent.click(screen.getByRole('button', { name: /expanded/i }));
+    expect(itemHeadings()).toEqual(['C1', 'C1', 'C1', 'V1']);
+  });
+
+  it('issue #69: disables Sheet and falls back to Chords when no item has sheet music', async () => {
+    const sheetUser = { ...USER, defaultView: 'sheet' as DefaultView };
+    // Chords over rests + w: lyrics — no melody in either section.
+    const sheetlessA1 = {
+      ...ARRANGEMENT_A1,
+      sections: [
+        {
+          label: 'V1',
+          content: 'X:1\nK:G\n"G" z4 | "C" z4 |\nw: A-mazing grace',
+        },
+        {
+          label: 'C1',
+          content: 'X:1\nK:G\n"D" z4 | "G" z4 |\nw: How sweet the sound',
+        },
+      ],
+    };
+    const detail: SetlistDetail = { ...DETAIL, items: [DETAIL.items[0]!] };
+    stubFetch((path, init) => {
+      if (path === '/api/auth/me')
+        return {
+          status: 200,
+          body: {
+            user: sheetUser,
+            memberships: [{ groupId: 'g1', role: 'member' }],
+          },
+        };
+      if (path === '/api/setlists/sl1' && (init?.method ?? 'GET') === 'GET')
+        return { status: 200, body: detail };
+      if (path === '/api/arrangements/a1')
+        return { status: 200, body: { arrangement: sheetlessA1 } };
+      return { status: 404, body: {} };
+    });
+    renderApp('/setlists/sl1/view');
+
+    const sheetBtn = await screen.findByRole('button', { name: /sheet/i });
+    expect(sheetBtn).toHaveProperty('disabled', true);
+    expect(sheetBtn.getAttribute('title')).toMatch(
+      /no arrangement.*sheet music/i,
+    );
+    // Fallback to Chords (member): chord chart renders, abcjs never called.
+    await waitFor(() => {
+      expect(document.querySelectorAll('.text-accent').length).toBeGreaterThan(
+        0,
+      );
+    });
+    expect(vi.mocked(renderAbc).mock.calls).toHaveLength(0);
+    expect(
+      screen
+        .getByRole('button', { name: /chords/i })
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
   });
 });

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  arrangementHasSheet,
   chordChartLines,
+  hasSheetMusic,
   lyricsText,
   orderedSections,
   sheetAbc,
@@ -163,6 +165,61 @@ describe('sheetAbc', () => {
   it('leaves music lines untouched (quoted chords are not C: fields)', () => {
     const abc = 'X:1\nK:G\n"C"c2 B2 |\nw: how sweet';
     expect(sheetAbc(abc)).toBe(abc);
+  });
+});
+
+describe('hasSheetMusic', () => {
+  it('detects a melody: a music line with a pitch note', () => {
+    expect(hasSheetMusic(ABC)).toBe(true); // "G"G2 A2 | ...
+    expect(hasSheetMusic('X:1\nK:G\nGAB c2B |\nw: a-ma-zing')).toBe(true);
+  });
+
+  it('treats chords over rests as sheet-less (the photo-chord-sheet convention)', () => {
+    // Chord symbols sit on rests, lyrics on w: lines — no pitch anywhere.
+    expect(
+      hasSheetMusic(
+        'X:1\nT:Táruljatok fel\nK:G\n"G" z4 | "C" z4 |\nw: Tá-ru-la-tok fel',
+      ),
+    ).toBe(false);
+  });
+
+  it('treats header-only and w:-only content as sheet-less', () => {
+    expect(hasSheetMusic('X:1\nT:Title\nM:4/4\nK:G\n')).toBe(false);
+    expect(hasSheetMusic('X:1\nK:G\nw: a-ma-zing grace')).toBe(false);
+  });
+
+  it('does not count quoted chord symbols or rests as pitches', () => {
+    expect(hasSheetMusic('X:1\nK:G\n"G" z2 "C" Z2 |')).toBe(false);
+    // ...but a single real note in the same line makes it a sheet.
+    expect(hasSheetMusic('"G" z2 "C" c2 |')).toBe(true);
+  });
+
+  it('ignores comments and %% directives, and empty content', () => {
+    expect(hasSheetMusic('% a comment\n%%text\nK:G\n')).toBe(false);
+    expect(hasSheetMusic('')).toBe(false);
+    expect(hasSheetMusic('   \n  ')).toBe(false);
+  });
+});
+
+describe('arrangementHasSheet', () => {
+  it('is true when any section has a melody (arrangement-level, issue #69)', () => {
+    expect(
+      arrangementHasSheet({
+        sections: [
+          { label: 'V1', content: 'K:G\n"G" z4 |\nw: a' }, // sheet-less
+          { label: 'C1', content: 'K:G\n"G"G2 A2 |\nw: b' }, // melody
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  it('is false for a chords+lyrics-only arrangement and for no sections', () => {
+    expect(
+      arrangementHasSheet({
+        sections: [{ label: 'V1', content: 'K:G\n"G" z4 |\nw: a' }],
+      }),
+    ).toBe(false);
+    expect(arrangementHasSheet({ sections: [] })).toBe(false);
   });
 });
 

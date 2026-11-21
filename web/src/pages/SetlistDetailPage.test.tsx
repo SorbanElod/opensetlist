@@ -210,8 +210,10 @@ describe('SetlistDetailPage', () => {
       2,
     );
     // First item: default key + default sequence; second: transposed + custom.
+    // Non-consecutive repeats stay linear (V1 → C1 → V1); the custom
+    // sequence's consecutive C1, C1 collapses to a ×2 badge (issue #69).
     expect(screen.getAllByText(/G · V1 → C1 → V1/).length).toBe(1);
-    expect(screen.getByText(/G → D · C1 → C1/)).toBeTruthy();
+    expect(screen.getByText(/G → D · C1 ×2/)).toBeTruthy();
     expect(screen.getByText('capo 3')).toBeTruthy();
     expect(screen.getByText('Soundcheck at 9:00')).toBeTruthy();
 

@@ -7,5 +7,7 @@
     "moduleResolution": "NodeNext",
     "types": ["node"]
   },
-  "include": ["src"]
+  // scripts/ is typechecked too — tsconfig.build.json overrides include back
+  // to src (rootDir stays src), so the production image is unaffected.
+  "include": ["src", "scripts"]
 }
