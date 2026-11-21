@@ -12,12 +12,19 @@ import { renderAbc } from 'abcjs';
 export function AbcRenderer({
   abc,
   debounceMs = 0,
+  scale,
 }: {
   abc: string;
   debounceMs?: number;
+  // Zoom scale for the sheet view (issue #59, fixed in #62). abcjs ignores
+  // its own scale param in responsive mode, so a non-1 scale renders
+  // non-responsive at the scaled size and the wrapper scrolls horizontally
+  // instead of truncating the staff. undefined / 1 = fit-to-width default.
+  scale?: number;
 }) {
   const targetRef = useRef<HTMLDivElement>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const scaled = scale !== undefined && scale !== 1;
 
   useEffect(() => {
     const target = targetRef.current;
@@ -30,11 +37,15 @@ export function AbcRenderer({
         return;
       }
       try {
-        // responsive: 'resize' fits the staff to the container width — the
-        // primary device is a phone on stage, so notation must not overflow.
-        // (abcjs ignores its scale param in this mode and fits via viewBox,
-        // so view zoom is applied as CSS zoom on the wrapper instead.)
-        renderAbc(target, abc, { responsive: 'resize' });
+        // Default: responsive 'resize' fits the staff to the container width
+        // (the primary device is a phone on stage). When zoomed, render at
+        // the scaled size instead — the SVG keeps its explicit scaled width
+        // (no max-w-full) and the wrapper's overflow-x-auto scrolls.
+        renderAbc(
+          target,
+          abc,
+          scaled ? { scale: scale! } : { responsive: 'resize' },
+        );
         setWarning(null);
       } catch {
         target.innerHTML = '';
@@ -43,17 +54,19 @@ export function AbcRenderer({
     }, debounceMs);
 
     return () => clearTimeout(handle);
-  }, [abc, debounceMs]);
+  }, [abc, debounceMs, scale, scaled]);
 
   return (
     <div>
       {/* abcjs draws its SVG with currentColor, so the notation follows the
           theme text color: white-on-dark in dark mode, black-on-light in
-          light mode. No fixed white card — that washed the notation out. */}
+          light mode. No fixed white card — that washed the notation out.
+          max-w-full constrains the SVG only in fit-to-width mode; when zoomed
+          the SVG keeps its scaled width and this wrapper scrolls instead. */}
       <div
         ref={targetRef}
         data-testid="abc-renderer"
-        className="overflow-x-auto rounded-lg p-1 text-text [&_svg]:max-w-full"
+        className={`overflow-x-auto rounded-lg p-1 text-text ${scaled ? '' : '[&_svg]:max-w-full'}`}
       />
       {warning && <p className="field-error">{warning}</p>}
     </div>

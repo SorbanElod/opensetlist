@@ -1,4 +1,11 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type TextareaHTMLAttributes,
+} from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import {
   ArrowDown,
@@ -23,8 +30,40 @@ import {
 } from '../api/arrangements';
 import { getSong, KEYS, type Song } from '../api/songs';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
-import { AbcRenderer } from '../components/AbcRenderer';
+import { ArrangementRenderer } from '../components/ArrangementRenderer';
 import { PageHeader } from '../components/PageHeader';
+import { Popover } from '../components/Popover';
+
+// Textarea that grows with its content (rows=1, height = scrollHeight): the
+// page scrolls, never an inner scrollbar — nested scrolling panels in the
+// section editor were confusing.
+function AutoTextarea({
+  value,
+  onChange,
+  ...rest
+}: {
+  value: string;
+  onChange: (e: ChangeEvent<HTMLTextAreaElement>) => void;
+} & Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'value' | 'onChange'>) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (el) {
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight}px`;
+    }
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      className="input resize-none overflow-hidden font-mono text-[12px]"
+      value={value}
+      onChange={onChange}
+      {...rest}
+    />
+  );
+}
 
 // One page serves both modes: /songs/:songId/arrangements/new (create) and
 // /arrangements/:id/edit (edit). The section editor submits the whole
@@ -46,8 +85,7 @@ export function ArrangementEditorPage() {
   const [bpmText, setBpmText] = useState('');
   const [sections, setSections] = useState<ArrangementSection[]>([]);
   const [sequence, setSequence] = useState<string[]>([]);
-  const [sequenceToAdd, setSequenceToAdd] = useState('');
-  const [previewIndex, setPreviewIndex] = useState(0);
+  const [seqMenuOpen, setSeqMenuOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<ArrangementFieldErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -96,7 +134,6 @@ export function ArrangementEditorPage() {
     setSections((prev) =>
       prev.map((s, i) => (i === index ? { ...s, ...patch } : s)),
     );
-    setPreviewIndex(index);
   }
 
   function moveSection(index: number, dir: -1 | 1) {
@@ -110,7 +147,6 @@ export function ArrangementEditorPage() {
       next[j] = a;
       return next;
     });
-    setPreviewIndex(j);
   }
 
   function removeSection(index: number) {
@@ -119,7 +155,6 @@ export function ArrangementEditorPage() {
     // Removing a section invalidates sequence entries with its label — drop
     // them here so the form can never submit an invalid sequence.
     if (label) setSequence((prev) => prev.filter((e) => e !== label));
-    setPreviewIndex(0);
   }
 
   function addSection() {
@@ -127,14 +162,12 @@ export function ArrangementEditorPage() {
       ...prev,
       { label: `Section ${prev.length + 1}`, content: '' },
     ]);
-    setPreviewIndex(sections.length);
   }
 
-  function addToSequence() {
-    const label = sequenceToAdd.trim();
-    if (!label) return;
-    setSequence((prev) => [...prev, label]); // repeats are legal (V1 C1 V1 C1)
-    setSequenceToAdd('');
+  function addToSequence(label: string) {
+    const l = label.trim();
+    if (!l) return;
+    setSequence((prev) => [...prev, l]); // repeats are legal (V1 C1 V1 C1)
   }
 
   function removeFromSequence(index: number) {
@@ -238,10 +271,20 @@ export function ArrangementEditorPage() {
     }
   }
 
-  const preview =
-    sections.length > 0
-      ? sections[Math.min(previewIndex, sections.length - 1)]
-      : null;
+  // The live preview IS the shared renderer (same view as the song page),
+  // fed a synthetic arrangement from the current form state — whole song in
+  // play order, Sheet/Chords/Lyrics toggle included.
+  const previewArrangement: Arrangement = {
+    id: 'preview',
+    songId: song?.id ?? '',
+    title: title || 'Untitled',
+    originalKey,
+    bpm: bpmText.trim() === '' ? null : Number(bpmText),
+    defaultSequence: sequence,
+    sections,
+    version: 1,
+    createdAt: '',
+  };
 
   if (loadError) {
     return (
@@ -352,73 +395,85 @@ export function ArrangementEditorPage() {
               Play order of sections, e.g. V1, C1, V2, C1. Repeats allowed.
             </p>
             {sequence.length > 0 && (
-              <ol className="mb-2 flex flex-wrap gap-1.5">
+              <ol className="mb-2 flex flex-col gap-1.5">
                 {sequence.map((entry, i) => (
                   <li
                     key={i}
-                    className="flex items-center gap-1 rounded-lg border border-border bg-raised px-2 py-1 font-mono text-[12px]"
+                    className="flex items-center justify-between gap-2 rounded-md border border-border bg-raised px-2 py-1.5 font-mono text-[12px]"
                   >
                     <span>
                       {i + 1}. {entry}
                     </span>
                     {canEdit && (
-                      <>
+                      <div className="flex shrink-0 gap-1">
                         <button
                           type="button"
-                          className="btn btn-ghost px-1"
+                          className="btn btn-ghost px-2.5"
                           aria-label={`Move ${entry} up`}
                           disabled={i === 0}
                           onClick={() => moveSequence(i, -1)}
                         >
-                          <ArrowUp size={12} />
+                          <ArrowUp size={15} />
                         </button>
                         <button
                           type="button"
-                          className="btn btn-ghost px-1"
+                          className="btn btn-ghost px-2.5"
                           aria-label={`Move ${entry} down`}
                           disabled={i === sequence.length - 1}
                           onClick={() => moveSequence(i, 1)}
                         >
-                          <ArrowDown size={12} />
+                          <ArrowDown size={15} />
                         </button>
                         <button
                           type="button"
-                          className="btn btn-ghost px-1"
+                          className="btn btn-ghost px-2.5"
                           aria-label={`Remove ${entry} from sequence`}
                           onClick={() => removeFromSequence(i)}
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={15} />
                         </button>
-                      </>
+                      </div>
                     )}
                   </li>
                 ))}
               </ol>
             )}
             {canEdit && (
-              <div className="flex gap-2">
-                <select
-                  className="input flex-1"
-                  aria-label="Add section to sequence"
-                  value={sequenceToAdd}
-                  onChange={(e) => setSequenceToAdd(e.target.value)}
-                >
-                  <option value="">Add a section…</option>
+              <Popover
+                open={seqMenuOpen}
+                onClose={() => setSeqMenuOpen(false)}
+                label="Add to sequence"
+                panelClassName="w-full"
+                anchor={
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-block"
+                    aria-haspopup="dialog"
+                    aria-expanded={seqMenuOpen}
+                    onClick={() => setSeqMenuOpen((v) => !v)}
+                  >
+                    <Plus size={14} /> Add to sequence
+                  </button>
+                }
+              >
+                <div className="flabel">Pick a section</div>
+                <ul className="mt-1 flex max-h-48 flex-col overflow-y-auto">
                   {sections.map((s, i) => (
-                    <option key={i} value={s.label}>
-                      {s.label || `Section ${i + 1}`}
-                    </option>
+                    <li key={i}>
+                      <button
+                        type="button"
+                        className="w-full rounded-md px-2 py-1.5 text-left font-mono text-[13px] hover:bg-raised"
+                        onClick={() => {
+                          addToSequence(s.label || `Section ${i + 1}`);
+                          setSeqMenuOpen(false);
+                        }}
+                      >
+                        {s.label || `Section ${i + 1}`}
+                      </button>
+                    </li>
                   ))}
-                </select>
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={addToSequence}
-                  disabled={!sequenceToAdd.trim()}
-                >
-                  <Plus size={14} /> Add
-                </button>
-              </div>
+                </ul>
+              </Popover>
             )}
             {fieldErrors.defaultSequence && (
               <p className="field-error">{fieldErrors.defaultSequence}</p>
@@ -431,7 +486,7 @@ export function ArrangementEditorPage() {
               {canEdit && (
                 <button
                   type="button"
-                  className="btn btn-outline"
+                  className="btn btn-primary"
                   onClick={addSection}
                 >
                   <Plus size={14} /> Add section
@@ -446,19 +501,18 @@ export function ArrangementEditorPage() {
                 No sections yet. Add one to start writing ABC notation.
               </p>
             )}
-            <div className="flex flex-col gap-3">
+            {/* All sections in ONE panel, separated by whitespace only —
+                not one card per section (matches the view pages). */}
+            <div className="card px-4 py-2">
               {sections.map((section, i) => (
-                <div key={i} className="card p-4">
-                  <div className="mb-2 flex items-center gap-2">
-                    <input
-                      className="input flex-1 font-mono"
-                      aria-label={`Section ${i + 1} label`}
-                      value={section.label}
-                      disabled={!canEdit}
-                      onChange={(e) =>
-                        updateSection(i, { label: e.target.value })
-                      }
-                    />
+                <section key={i} className="py-3">
+                  <div className="mb-1 flex items-center justify-between gap-2">
+                    <label
+                      className="flabel mb-0"
+                      htmlFor={`section-${i}-label`}
+                    >
+                      Section label
+                    </label>
                     {canEdit && (
                       <div className="flex shrink-0 gap-1">
                         <button
@@ -490,9 +544,21 @@ export function ArrangementEditorPage() {
                       </div>
                     )}
                   </div>
-                  <textarea
-                    className="input font-mono text-[12px]"
-                    rows={6}
+                  <input
+                    id={`section-${i}-label`}
+                    className="input mb-3 font-mono"
+                    aria-label={`Section ${i + 1} label`}
+                    value={section.label}
+                    disabled={!canEdit}
+                    onChange={(e) =>
+                      updateSection(i, { label: e.target.value })
+                    }
+                  />
+                  <label className="flabel" htmlFor={`section-${i}-abc`}>
+                    ABC notation
+                  </label>
+                  <AutoTextarea
+                    id={`section-${i}-abc`}
                     aria-label={`Section ${i + 1} ABC content`}
                     placeholder={'X:1\nT:Title\nM:4/4\nK:G\nGAB c2B |'}
                     value={section.content}
@@ -501,42 +567,22 @@ export function ArrangementEditorPage() {
                       updateSection(i, { content: e.target.value })
                     }
                   />
-                </div>
+                </section>
               ))}
             </div>
           </div>
 
           <div className="mt-5">
             <span className="flabel">Live preview</span>
-            {preview ? (
-              <div className="card mt-2 p-4">
-                <select
-                  className="input mb-3 font-mono"
-                  aria-label="Preview section"
-                  value={preview.label}
-                  onChange={(e) =>
-                    setPreviewIndex(
-                      Math.max(
-                        0,
-                        sections.findIndex((s) => s.label === e.target.value),
-                      ),
-                    )
-                  }
-                >
-                  {sections.map((s, i) => (
-                    <option key={i} value={s.label}>
-                      {s.label || `Section ${i + 1}`}
-                    </option>
-                  ))}
-                </select>
-                {/* debounceMs: live preview re-renders ~200ms after the last keystroke */}
-                <AbcRenderer abc={preview.content} debounceMs={200} />
-              </div>
-            ) : (
-              <p className="hint mt-2">
-                The preview appears once a section has content.
-              </p>
-            )}
+            {/* The SAME renderer as the song/on-stage pages — whole arrangement
+                in play order, Sheet/Chords/Lyrics toggle, zoom. debounceMs
+                keeps abcjs from re-rendering on every keystroke. */}
+            <div className="mt-2">
+              <ArrangementRenderer
+                arrangement={previewArrangement}
+                debounceMs={200}
+              />
+            </div>
           </div>
 
           {canEdit && (

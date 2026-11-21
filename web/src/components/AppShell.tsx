@@ -65,6 +65,9 @@ export function AppShell() {
             <NavLink to="/songs" className={navLinkClass}>
               {({ isActive }) => navLabel(isActive, 'Songs')}
             </NavLink>
+            <NavLink to="/setlists" className={navLinkClass}>
+              {({ isActive }) => navLabel(isActive, 'Setlists')}
+            </NavLink>
           </nav>
           <div className="ml-auto flex items-center gap-2">
             <span className="hidden text-[13px] text-muted sm:inline">

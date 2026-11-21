@@ -9,6 +9,17 @@ import type { ArrangementSection } from '../api/arrangements';
 //   'lyrics' — lyric words only, as plain text (lyricsText below)
 export type ViewMode = 'sheet' | 'chords' | 'lyrics';
 
+// CSS zoom wrapper style for text views. Zooming IN needs the width
+// compensation (100/scale %) so the box keeps its on-screen width and text
+// wraps instead of overflowing the card. Zooming OUT needs none — letting
+// the box shrink keeps the card compact; compensating there leaves a
+// full-width card with tiny text.
+export function zoomStyle(scale: number): { zoom: number; width?: string } {
+  return scale > 1
+    ? { zoom: scale, width: `${100 / scale}%` }
+    : { zoom: scale };
+}
+
 // Sections in play order: every sequence entry resolves to its section
 // (repeats are legal — V1 C1 V1 C1), then any section the sequence does not
 // mention is appended once, in its original order, so no content is silently

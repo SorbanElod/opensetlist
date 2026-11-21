@@ -8,26 +8,60 @@ import {
   lyricsText,
   orderedSections,
   sheetAbc,
+  zoomStyle,
   type ViewMode,
 } from '../lib/abcViews';
+import { keyAtOffset, transposeAbc } from '../lib/transpose';
 import { AbcRenderer } from './AbcRenderer';
 import { ChordChartView } from './ChordChartView';
+import { TransposeControl } from './TransposeControl';
 
 // One render pipeline for an arrangement's sections (issues #10, #51), used
-// by the on-stage page (/arrangements/:id) AND inline on the song detail
-// page — one pipeline, no forked logic (Single-Source, Multi-View). The
-// three views all derive from the SAME stored ABC at render time, so
-// switching views is local state only and costs no server round-trip. The
-// default view comes from the user's stored preference; "Set as my default"
-// persists the choice.
+// by the on-stage page (/arrangements/:id), inline on the song detail page,
+// AND per item on the setlist view — one pipeline, no forked logic
+// (Single-Source, Multi-View). The three views all derive from the SAME
+// stored ABC at render time, so switching views is local state only and
+// costs no server round-trip. The default view comes from the user's stored
+// preference; "Set as my default" persists the choice.
 export function ArrangementRenderer({
   arrangement,
   trailing,
+  sequence,
+  transposedKey,
+  view: viewProp,
+  scale: scaleProp,
+  bare,
+  applyZoom,
+  debounceMs,
+  keyOffset: keyOffsetProp,
+  onKeyOffsetChange,
 }: {
+  // Controlled transpose (setlist view): when keyOffset is passed, the parent
+  // owns the +/- control and the renderer hides its own.
+  keyOffset?: number;
+  onKeyOffsetChange?: (offset: number) => void;
+  // debounceMs for the sheet view's abcjs render (editor live preview: 200ms
+  // so long sections don't re-render on every keystroke).
+  debounceMs?: number;
   arrangement: Arrangement;
   // Optional control docked at the right end of the view-toggle row (the
   // arrangement switcher on the song detail page).
   trailing?: ReactNode;
+  // Setlist item overrides (issue #62): sequence replaces
+  // arrangement.defaultSequence; transposedKey is applied to the ABC at
+  // render time (never stored transposed).
+  sequence?: string[];
+  transposedKey?: string | null;
+  // Controlled mode for the setlist view: when view/scale are passed, the
+  // parent owns the toggle/zoom and the local controls are hidden.
+  view?: ViewMode;
+  scale?: number;
+  // bare: render the sections panel without its own .card — for pages that
+  // already wrap the renderer in a card (avoids concentric cards).
+  bare?: boolean;
+  // applyZoom: false lets the parent own the CSS zoom wrapper (setlist view
+  // wraps the whole item, so notes and the header scale too).
+  applyZoom?: boolean;
 }) {
   const auth = useAuth();
 
@@ -36,7 +70,7 @@ export function ArrangementRenderer({
   // mount and the first render already has the right view — no sheet flash.
   // Later preference changes (this component's own "Set as my default") only
   // reseed on remount, never yank the view mid-song.
-  const [view, setView] = useState<ViewMode>(() =>
+  const [viewState, setViewState] = useState<ViewMode>(() =>
     auth.status === 'authenticated' ? auth.user.defaultView : 'sheet',
   );
   const [savingDefault, setSavingDefault] = useState(false);
@@ -46,9 +80,22 @@ export function ArrangementRenderer({
   // text and the abcjs SVG scale. Bounds 50%–150%, steps of 10%.
   const ZOOM_MIN = 0.5;
   const ZOOM_MAX = 1.5;
-  const [scale, setScale] = useState(1);
+  const [scaleState, setScaleState] = useState(1);
+  const view = viewProp ?? viewState;
+  const scale = scaleProp ?? scaleState;
+
+  // Live transpose (view-side, never persisted here): semitone offset from
+  // the item's key (setlist override) or the arrangement's original key.
+  // Saving a transposition for a setlist item happens in the setlist detail
+  // editor (transposed_key override) — the view is live-only.
+  const [keyOffsetState, setKeyOffsetState] = useState(0);
+  const keyOffset = keyOffsetProp ?? keyOffsetState;
+  const setKeyOffset = onKeyOffsetChange ?? setKeyOffsetState;
+  const baseKey = transposedKey ?? arrangement.originalKey;
+  const effectiveKey =
+    keyOffset === 0 ? baseKey : keyAtOffset(baseKey, keyOffset);
   function zoomBy(delta: number) {
-    setScale((s) =>
+    setScaleState((s) =>
       Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round((s + delta) * 10) / 10)),
     );
   }
@@ -73,25 +120,37 @@ export function ArrangementRenderer({
   }
 
   // Sections in play order: sequence entries resolve to sections (repeats
-  // legal), unmentioned sections append once — see lib/abcViews.
+  // legal), unmentioned sections append once — see lib/abcViews. The
+  // setlist view passes the item's effective sequence as `sequence`.
   const sections = orderedSections(
     arrangement.sections,
-    arrangement.defaultSequence,
+    sequence ?? arrangement.defaultSequence,
   );
-
-  const segmentClass = (active: boolean) =>
-    `flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-semibold transition-colors ${
-      active ? 'bg-raised text-text' : 'text-muted hover:text-text'
-    }`;
 
   // The three views of one ABC source: sheet renders via abcjs, chords is a
   // flowing HTML chord chart and lyrics plain text — all derived from the
   // same ABC at render time (see lib/abcViews).
-  function renderSection(content: string) {
+  function renderSection(rawContent: string) {
+    // Transposed key is applied at render time only — the stored ABC is
+    // never rewritten (issue #12). Live +/- offset composes with the
+    // setlist item's saved transposedKey.
+    const content =
+      effectiveKey !== arrangement.originalKey
+        ? transposeAbc(rawContent, arrangement.originalKey, effectiveKey)
+        : rawContent;
     // Sheet view: no zoom for now (abcjs responsive mode ignores its scale
     // param and CSS zoom truncates the staff — follow-up issue). Text views
     // scale via the compensated zoom wrapper around all sections.
-    if (view === 'sheet') return <AbcRenderer abc={sheetAbc(content)} />;
+    // Sheet view: zoom goes through abcjs's own scale param (AbcRenderer);
+    // text views scale via the CSS zoom wrapper below.
+    if (view === 'sheet')
+      return (
+        <AbcRenderer
+          abc={sheetAbc(content)}
+          scale={scale === 1 ? undefined : scale}
+          debounceMs={debounceMs}
+        />
+      );
     if (view === 'chords') return <ChordChartView abc={content} />;
     const text = lyricsText(content);
     return text.trim() ? (
@@ -107,82 +166,93 @@ export function ArrangementRenderer({
 
   return (
     <>
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div
-          className="inline-flex rounded-md border border-border bg-bg p-0.5"
-          role="group"
-          aria-label="View"
-        >
-          <button
-            type="button"
-            className={segmentClass(view === 'sheet')}
-            aria-pressed={view === 'sheet'}
-            onClick={() => setView('sheet')}
-          >
-            <Music size={14} /> Sheet
-          </button>
-          <button
-            type="button"
-            className={segmentClass(view === 'chords')}
-            aria-pressed={view === 'chords'}
-            onClick={() => setView('chords')}
-          >
-            <Guitar size={14} /> Chords
-          </button>
-          <button
-            type="button"
-            className={segmentClass(view === 'lyrics')}
-            aria-pressed={view === 'lyrics'}
-            onClick={() => setView('lyrics')}
-          >
-            <Mic size={14} /> Lyrics
-          </button>
+      {/* In fully controlled mode (setlist view passes view+scale+keyOffset)
+          the parent owns all controls in its own top bar — no row here. */}
+      {(viewProp === undefined ||
+        scaleProp === undefined ||
+        keyOffsetProp === undefined ||
+        trailing) && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          {/* In controlled mode (setlist view) the parent owns the view, so
+            the toggle and "set as default" are hidden. */}
+          {viewProp === undefined && (
+            <div className="seg-group" role="group" aria-label="View">
+              <button
+                type="button"
+                className="seg-btn"
+                aria-pressed={view === 'sheet'}
+                onClick={() => setViewState('sheet')}
+              >
+                <Music size={14} /> Sheet
+              </button>
+              <button
+                type="button"
+                className="seg-btn"
+                aria-pressed={view === 'chords'}
+                onClick={() => setViewState('chords')}
+              >
+                <Guitar size={14} /> Chords
+              </button>
+              <button
+                type="button"
+                className="seg-btn"
+                aria-pressed={view === 'lyrics'}
+                onClick={() => setViewState('lyrics')}
+              >
+                <Mic size={14} /> Lyrics
+              </button>
+            </div>
+          )}
+          {/* Zoom is available in every view: text views scale via CSS zoom,
+            the sheet view via abcjs's own scale param (issue #59). */}
+          {scaleProp === undefined && (
+            <div className="seg-group" role="group" aria-label="Zoom">
+              <button
+                type="button"
+                aria-label="Zoom out"
+                disabled={scale <= ZOOM_MIN}
+                onClick={() => zoomBy(-0.1)}
+                className="seg-btn seg-btn-icon disabled:opacity-40"
+              >
+                <Minus size={14} />
+              </button>
+              <span className="flex h-[40px] w-9 items-center justify-center text-[11px] tabular-nums text-muted">
+                {Math.round(scale * 100)}%
+              </span>
+              <button
+                type="button"
+                aria-label="Zoom in"
+                disabled={scale >= ZOOM_MAX}
+                onClick={() => zoomBy(0.1)}
+                className="seg-btn seg-btn-icon disabled:opacity-40"
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+          )}
+          {viewProp === undefined && !isDefault && (
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={onSaveDefault}
+              disabled={savingDefault}
+            >
+              {savingDefault ? 'Saving…' : 'Set as my default'}
+            </button>
+          )}
+          {trailing && <div className="flex items-center">{trailing}</div>}
+          {/* Live transpose sits at the row's upper right. In controlled mode
+            (setlist view) the parent owns it and renders it in the top bar. */}
+          {keyOffsetProp === undefined && (
+            <TransposeControl
+              baseKey={baseKey}
+              keyOffset={keyOffset}
+              onKeyOffsetChange={setKeyOffset}
+              className="ml-auto"
+            />
+          )}
         </div>
-        {/* Zoom is hidden in sheet view for now — scaling the abcjs staff
-            without truncating it needs a follow-up (see issue). */}
-        {view !== 'sheet' && (
-          <div
-            className="inline-flex items-center rounded-md border border-border bg-bg p-0.5"
-            role="group"
-            aria-label="Zoom"
-          >
-            <button
-              type="button"
-              aria-label="Zoom out"
-              disabled={scale <= ZOOM_MIN}
-              onClick={() => zoomBy(-0.1)}
-              className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
-            >
-              <Minus size={13} />
-            </button>
-            <span className="w-9 text-center text-[11px] tabular-nums text-muted">
-              {Math.round(scale * 100)}%
-            </span>
-            <button
-              type="button"
-              aria-label="Zoom in"
-              disabled={scale >= ZOOM_MAX}
-              onClick={() => zoomBy(0.1)}
-              className="flex h-[26px] w-[26px] items-center justify-center rounded text-muted transition-colors hover:text-text disabled:opacity-40 disabled:hover:text-muted"
-            >
-              <Plus size={13} />
-            </button>
-          </div>
-        )}
-        {!isDefault && (
-          <button
-            type="button"
-            className="btn btn-outline"
-            onClick={onSaveDefault}
-            disabled={savingDefault}
-          >
-            {savingDefault ? 'Saving…' : 'Set as my default'}
-          </button>
-        )}
-        {trailing && (
-          <div className="ml-auto flex items-center">{trailing}</div>
-        )}
-      </div>
+      )}
 
       {saveError && (
         <div className="error-banner mb-3" role="alert">
@@ -198,15 +268,22 @@ export function ArrangementRenderer({
 
       {/* All sections in ONE panel with no separators — just whitespace;
           each section's label heading is the only structure. */}
-      <div className="card px-4 py-2" data-testid="arrangement-sections">
+      <div
+        className={bare ? undefined : 'card px-4 py-2'}
+        data-testid="arrangement-sections"
+      >
         {/* Text views: `zoom` scales text, labels and the spacing between
             sections; the width compensation keeps the card at its normal
             on-screen width (text wraps, nothing is cut off). Sheet view:
-            no compensation here — the SVG scales via its own zoom wrapper
-            and scrolls inside the section instead of overflowing the page. */}
+            no CSS zoom (a responsive SVG would not scale — abcjs's scale
+            param handles it in AbcRenderer); overflow-x-auto lets a zoomed
+            staff scroll horizontally instead of being truncated. When
+            applyZoom is false the parent owns the zoom wrapper (setlist
+            view: the item header and notes scale too). */}
         <div
+          className={view === 'sheet' ? 'overflow-x-auto' : undefined}
           style={
-            view === 'sheet' ? {} : { zoom: scale, width: `${100 / scale}%` }
+            view === 'sheet' || applyZoom === false ? {} : zoomStyle(scale)
           }
           data-testid="scaled-content"
         >

@@ -6,7 +6,7 @@ import {
   type KeyboardEvent,
 } from 'react';
 import { useNavigate } from 'react-router';
-import { Check, Filter, Plus, Search, Trash2, Upload, X } from 'lucide-react';
+import { Check, Filter, Plus, Search, Trash2, Upload } from 'lucide-react';
 
 import { ApiError } from '../api/client';
 import {
@@ -21,6 +21,7 @@ import { EmptyState } from '../components/EmptyState';
 import { ListRow } from '../components/ListRow';
 import { PageHeader } from '../components/PageHeader';
 import { Popover } from '../components/Popover';
+import { TagChip } from '../components/TagChip';
 
 export function SongsPage() {
   const auth = useAuth();
@@ -328,11 +329,7 @@ export function SongsPage() {
           </div>
 
           <div className="mt-2 flex items-center justify-between gap-2">
-            <div
-              className="flex overflow-hidden rounded-md border border-border"
-              role="group"
-              aria-label="Tag match mode"
-            >
+            <div className="seg-group" role="group" aria-label="Tag match mode">
               {(
                 [
                   { value: true, label: 'ALL' },
@@ -343,11 +340,7 @@ export function SongsPage() {
                   key={opt.label}
                   type="button"
                   aria-pressed={matchAll === opt.value}
-                  className={`px-2 py-1 text-[11px] font-semibold ${
-                    matchAll === opt.value
-                      ? 'bg-accent text-on-accent'
-                      : 'bg-raised text-muted'
-                  }`}
+                  className="seg-btn"
                   onClick={() => setMatchAll(opt.value)}
                 >
                   {opt.label}
@@ -370,35 +363,16 @@ export function SongsPage() {
       {(selectedTags.length > 0 || tagLike !== null) && (
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
           {selectedTags.map((name) => (
-            <span
+            <TagChip
               key={name}
-              className="inline-flex items-center gap-1 rounded-md border border-accent-border bg-accent-soft px-2 py-0.5 font-mono text-[12px] text-accent"
-            >
-              {name}
-              <button
-                type="button"
-                aria-label={`Remove tag filter ${name}`}
-                className="text-subtle hover:text-text"
-                onClick={() =>
-                  setSelectedTags((prev) => prev.filter((t) => t !== name))
-                }
-              >
-                <X size={11} />
-              </button>
-            </span>
+              name={name}
+              onRemove={() =>
+                setSelectedTags((prev) => prev.filter((t) => t !== name))
+              }
+            />
           ))}
           {tagLike !== null && (
-            <span className="inline-flex items-center gap-1 rounded-md border border-accent-border bg-accent-soft px-2 py-0.5 font-mono text-[12px] text-accent">
-              ~{tagLike}
-              <button
-                type="button"
-                aria-label={`Remove tag filter ~${tagLike}`}
-                className="text-subtle hover:text-text"
-                onClick={() => setTagLike(null)}
-              >
-                <X size={11} />
-              </button>
-            </span>
+            <TagChip name={`~${tagLike}`} onRemove={() => setTagLike(null)} />
           )}
         </div>
       )}

@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { authorize } from '../auth/authorize.js';
 import type { Db } from '../db/index.js';
+import { emitSetlistChanged } from '../realtime.js';
 import { getSingleGroupId } from '../songs/service.js';
 import {
   createArrangementSchema,
@@ -72,6 +73,7 @@ export const arrangementsRoutes: FastifyPluginAsync<
       if (!arrangement) {
         return reply.code(404).send({ message: 'Song not found' });
       }
+      emitSetlistChanged(groupId);
 
       return reply.code(201).send({ arrangement });
     },
@@ -122,6 +124,7 @@ export const arrangementsRoutes: FastifyPluginAsync<
               : 'Arrangement not found',
         });
       }
+      emitSetlistChanged(groupId);
 
       return { arrangement: result.arrangement };
     },
@@ -153,6 +156,7 @@ export const arrangementsRoutes: FastifyPluginAsync<
               : 'Arrangement not found',
         });
       }
+      emitSetlistChanged(groupId);
 
       return { status: 'ok' };
     },
