@@ -1,16 +1,19 @@
 import { useState, type ReactNode } from 'react';
-import { Guitar, Mic, Minus, Music, Plus } from 'lucide-react';
+import { Guitar, List, Mic, Minus, Music, Plus, Repeat } from 'lucide-react';
 
 import { ApiError } from '../api/client';
 import type { Arrangement } from '../api/arrangements';
-import { useAuth } from '../auth/AuthContext';
+import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 import {
+  arrangementHasSheet,
+  hasSheetMusic,
   lyricsText,
   orderedSections,
   sheetAbc,
   zoomStyle,
   type ViewMode,
 } from '../lib/abcViews';
+import { collapseRepeats } from '../lib/sequence';
 import { keyAtOffset, transposeAbc } from '../lib/transpose';
 import { AbcRenderer } from './AbcRenderer';
 import { ChordChartView } from './ChordChartView';
@@ -35,6 +38,7 @@ export function ArrangementRenderer({
   debounceMs,
   keyOffset: keyOffsetProp,
   onKeyOffsetChange,
+  compact: compactProp,
 }: {
   // Controlled transpose (setlist view): when keyOffset is passed, the parent
   // owns the +/- control and the renderer hides its own.
@@ -56,6 +60,9 @@ export function ArrangementRenderer({
   // parent owns the toggle/zoom and the local controls are hidden.
   view?: ViewMode;
   scale?: number;
+  // Controlled compact-repeat display (setlist view owns the toggle in its
+  // top bar). Uncontrolled: local state, default compact (issue #69).
+  compact?: boolean;
   // bare: render the sections panel without its own .card — for pages that
   // already wrap the renderer in a card (avoids concentric cards).
   bare?: boolean;
@@ -64,6 +71,7 @@ export function ArrangementRenderer({
   applyZoom?: boolean;
 }) {
   const auth = useAuth();
+  const role = useMyRole();
 
   // Seeded once at mount from the stored preference. Both pages using this
   // renderer sit behind the auth gate, so the session is already resolved at
@@ -84,6 +92,26 @@ export function ArrangementRenderer({
   const view = viewProp ?? viewState;
   const scale = scaleProp ?? scaleState;
 
+  // Compact repeat display (issue #69): consecutive identical sequence
+  // labels render once with a ×N badge. Default compact; the setlist view
+  // passes a controlled value from its own top-bar toggle.
+  const [compactState, setCompactState] = useState(true);
+  const compact = compactProp ?? compactState;
+
+  // Sheet-less arrangement (issue #69): the ABC carries no melody, so the
+  // Sheet view has nothing to render — the option is disabled and the view
+  // falls back to Chords (member and up) or Lyrics (reader). Derived, not an
+  // effect: covers both a stored defaultView of 'sheet' and switching to a
+  // sheet-less arrangement on the song detail page (#51). Role gating is
+  // unchanged — the disabled state only composes with it.
+  const hasSheet = arrangementHasSheet(arrangement);
+  const sheetFallback: ViewMode =
+    auth.status === 'authenticated' && canWrite(role, auth.user.isSuperadmin)
+      ? 'chords'
+      : 'lyrics';
+  const effectiveView: ViewMode =
+    view === 'sheet' && !hasSheet ? sheetFallback : view;
+
   // Live transpose (view-side, never persisted here): semitone offset from
   // the item's key (setlist override) or the arrangement's original key.
   // Saving a transposition for a setlist item happens in the setlist detail
@@ -101,13 +129,15 @@ export function ArrangementRenderer({
   }
 
   const isDefault =
-    auth.status === 'authenticated' && auth.user.defaultView === view;
+    auth.status === 'authenticated' && auth.user.defaultView === effectiveView;
 
   async function onSaveDefault() {
     setSavingDefault(true);
     setSaveError(null);
     try {
-      await auth.setDefaultView(view);
+      // Save the EFFECTIVE view — on a sheet-less arrangement the raw 'sheet'
+      // choice is disabled, so the fallback (chords/lyrics) is what's shown.
+      await auth.setDefaultView(effectiveView);
     } catch (err) {
       setSaveError(
         err instanceof ApiError
@@ -122,10 +152,22 @@ export function ArrangementRenderer({
   // Sections in play order: sequence entries resolve to sections (repeats
   // legal), unmentioned sections append once — see lib/abcViews. The
   // setlist view passes the item's effective sequence as `sequence`.
-  const sections = orderedSections(
+  const ordered = orderedSections(
     arrangement.sections,
     sequence ?? arrangement.defaultSequence,
   );
+  // Display list (issue #69): compact mode collapses consecutive identical
+  // labels to one entry with a ×N badge; expanded keeps the linear list.
+  // Either way startIndex refers to the expanded sequence — presentation
+  // only, stored data is never renumbered.
+  const display = compact
+    ? collapseRepeats(ordered)
+    : ordered.map((section, i) => ({
+        item: section,
+        label: section.label.trim(),
+        count: 1,
+        startIndex: i,
+      }));
 
   // The three views of one ABC source: sheet renders via abcjs, chords is a
   // flowing HTML chord chart and lyrics plain text — all derived from the
@@ -143,7 +185,15 @@ export function ArrangementRenderer({
     // scale via the compensated zoom wrapper around all sections.
     // Sheet view: zoom goes through abcjs's own scale param (AbcRenderer);
     // text views scale via the CSS zoom wrapper below.
-    if (view === 'sheet')
+    if (effectiveView === 'sheet') {
+      // A melody-less section inside a sheet-ful arrangement renders a hint
+      // instead of an empty staff (issue #69).
+      if (!hasSheetMusic(content))
+        return (
+          <p className="hint">
+            No melody in this section — see the Chords or Lyrics view.
+          </p>
+        );
       return (
         <AbcRenderer
           abc={sheetAbc(content)}
@@ -151,7 +201,8 @@ export function ArrangementRenderer({
           debounceMs={debounceMs}
         />
       );
-    if (view === 'chords') return <ChordChartView abc={content} />;
+    }
+    if (effectiveView === 'chords') return <ChordChartView abc={content} />;
     const text = lyricsText(content);
     return text.trim() ? (
       // Same typeface and size as the chords view's syllable row — only the
@@ -179,8 +230,14 @@ export function ArrangementRenderer({
             <div className="seg-group" role="group" aria-label="View">
               <button
                 type="button"
-                className="seg-btn"
-                aria-pressed={view === 'sheet'}
+                className="seg-btn disabled:opacity-40"
+                aria-pressed={effectiveView === 'sheet'}
+                disabled={!hasSheet}
+                title={
+                  hasSheet
+                    ? undefined
+                    : 'This arrangement has no sheet music (chords + lyrics only)'
+                }
                 onClick={() => setViewState('sheet')}
               >
                 <Music size={14} /> Sheet
@@ -188,7 +245,7 @@ export function ArrangementRenderer({
               <button
                 type="button"
                 className="seg-btn"
-                aria-pressed={view === 'chords'}
+                aria-pressed={effectiveView === 'chords'}
                 onClick={() => setViewState('chords')}
               >
                 <Guitar size={14} /> Chords
@@ -196,10 +253,34 @@ export function ArrangementRenderer({
               <button
                 type="button"
                 className="seg-btn"
-                aria-pressed={view === 'lyrics'}
+                aria-pressed={effectiveView === 'lyrics'}
                 onClick={() => setViewState('lyrics')}
               >
                 <Mic size={14} /> Lyrics
+              </button>
+            </div>
+          )}
+          {/* Compact repeat display toggle (issue #69): consecutive
+            identical sequence labels collapse to one section with a ×N
+            badge (default); Expanded restores the full linear list. In
+            controlled mode (setlist view) the parent owns this toggle. */}
+          {compactProp === undefined && (
+            <div className="seg-group" role="group" aria-label="Repeat display">
+              <button
+                type="button"
+                className="seg-btn"
+                aria-pressed={compact}
+                onClick={() => setCompactState(true)}
+              >
+                <Repeat size={14} /> Compact
+              </button>
+              <button
+                type="button"
+                className="seg-btn"
+                aria-pressed={!compact}
+                onClick={() => setCompactState(false)}
+              >
+                <List size={14} /> Expanded
               </button>
             </div>
           )}
@@ -260,7 +341,7 @@ export function ArrangementRenderer({
         </div>
       )}
 
-      {sections.length === 0 && (
+      {ordered.length === 0 && (
         <p className="hint">
           This arrangement has no sections yet — add ABC sections in the editor.
         </p>
@@ -281,19 +362,37 @@ export function ArrangementRenderer({
             applyZoom is false the parent owns the zoom wrapper (setlist
             view: the item header and notes scale too). */}
         <div
-          className={view === 'sheet' ? 'overflow-x-auto' : undefined}
+          className={effectiveView === 'sheet' ? 'overflow-x-auto' : undefined}
           style={
-            view === 'sheet' || applyZoom === false ? {} : zoomStyle(scale)
+            effectiveView === 'sheet' || applyZoom === false
+              ? {}
+              : zoomStyle(scale)
           }
           data-testid="scaled-content"
         >
-          {sections.map((section, i) => (
-            <section key={`${section.label}-${i}`} className="py-2">
+          {display.map(({ item: section, count, startIndex }) => (
+            <section
+              key={`${section.label}-${startIndex}`}
+              data-sequence-index={startIndex}
+              className="py-2"
+            >
               <h2 className="mb-1 text-[13px] font-semibold uppercase tracking-wide text-muted">
                 {section.label}
+                {/* ×N badge on collapsed repeats (issue #69): the section
+                    renders once, the badge says how many passes. */}
+                {compact && count > 1 && (
+                  <span
+                    data-testid="repeat-badge"
+                    className="ml-1.5 rounded bg-raised px-1 py-px align-middle text-[11px] normal-case tracking-normal text-accent"
+                  >
+                    ×{count}
+                  </span>
+                )}
               </h2>
               {/* All views derive from the same stored ABC at render
-                  time — nothing derived is persisted. */}
+                  time — nothing derived is persisted. data-sequence-index
+                  keeps the expanded-sequence position, so anything anchored
+                  to sequence indexes is unaffected by the collapse. */}
               {renderSection(section.content)}
             </section>
           ))}

@@ -493,6 +493,12 @@ export function ArrangementEditorPage() {
                 </button>
               )}
             </div>
+            <p className="hint mb-2">
+              Chords + lyrics only (e.g. a photo chord sheet)? Put chord symbols
+              over rests — <code>"G" z4 | "C" z4 |</code> — with the lyrics on
+              w: lines; no melody needed. The Sheet view disables itself for
+              such arrangements (issue #69).
+            </p>
             {fieldErrors.sections && (
               <p className="field-error mb-2">{fieldErrors.sections}</p>
             )}

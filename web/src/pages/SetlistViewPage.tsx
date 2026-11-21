@@ -13,6 +13,7 @@ import {
   Music,
   Pencil,
   Plus,
+  Repeat,
   StickyNote,
 } from 'lucide-react';
 
@@ -24,7 +25,7 @@ import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 import { ArrangementRenderer } from '../components/ArrangementRenderer';
 import { TransposeControl } from '../components/TransposeControl';
 import { PageHeader } from '../components/PageHeader';
-import { zoomStyle, type ViewMode } from '../lib/abcViews';
+import { arrangementHasSheet, zoomStyle, type ViewMode } from '../lib/abcViews';
 
 // On-stage setlist view (issue #62): every item in position order on one
 // page. Arrangement items render through the shared ArrangementRenderer with
@@ -53,6 +54,10 @@ export function SetlistViewPage() {
   const ZOOM_MIN = 0.5;
   const ZOOM_MAX = 1.5;
   const [scale, setScale] = useState(1);
+  // Compact repeat display (issue #69): one toggle drives every item —
+  // consecutive identical sequence labels collapse to a ×N badge.
+  // Default compact.
+  const [compact, setCompact] = useState(true);
   // Per-item live transpose offsets (render-time only; the saved per-item
   // key is the item's transposedKey override, edited on the detail page).
   const [keyOffsets, setKeyOffsets] = useState<Record<string, number>>({});
@@ -123,6 +128,22 @@ export function SetlistViewPage() {
       : mode === 'one'
         ? detail.items.slice(currentIndex, currentIndex + 1)
         : detail.items;
+  // Sheet-less arrangements (issue #69): the Sheet option is disabled when
+  // no visible arrangement item carries a melody (in 'one' mode that is
+  // exactly the current item). Sheet-less items still fall back to
+  // Chords/Lyrics inside the renderer. Derived, not an effect.
+  const anySheet = visibleItems.some((item) => {
+    const a = item.arrangementId
+      ? arrangements.get(item.arrangementId)
+      : undefined;
+    return a ? arrangementHasSheet(a) : false;
+  });
+  const sheetFallback: ViewMode =
+    auth.status === 'authenticated' && canWrite(role, auth.user.isSuperadmin)
+      ? 'chords'
+      : 'lyrics';
+  const effectiveView: ViewMode =
+    view === 'sheet' && !anySheet ? sheetFallback : view;
   // Item changed in 'one' mode -> the PAGE scrolls back to the beginning of
   // the item (no nested scroll containers — the item renders at full height
   // and the page-level scroll handles it).
@@ -193,8 +214,14 @@ export function SetlistViewPage() {
             <div className="seg-group" role="group" aria-label="View">
               <button
                 type="button"
-                className="seg-btn"
-                aria-pressed={view === 'sheet'}
+                className="seg-btn disabled:opacity-40"
+                aria-pressed={effectiveView === 'sheet'}
+                disabled={!anySheet}
+                title={
+                  anySheet
+                    ? undefined
+                    : 'No arrangement in this setlist has sheet music (chords + lyrics only)'
+                }
                 onClick={() => setView('sheet')}
               >
                 <Music size={14} /> Sheet
@@ -202,7 +229,7 @@ export function SetlistViewPage() {
               <button
                 type="button"
                 className="seg-btn"
-                aria-pressed={view === 'chords'}
+                aria-pressed={effectiveView === 'chords'}
                 onClick={() => setView('chords')}
               >
                 <Guitar size={14} /> Chords
@@ -210,10 +237,30 @@ export function SetlistViewPage() {
               <button
                 type="button"
                 className="seg-btn"
-                aria-pressed={view === 'lyrics'}
+                aria-pressed={effectiveView === 'lyrics'}
                 onClick={() => setView('lyrics')}
               >
                 <Mic size={14} /> Lyrics
+              </button>
+            </div>
+            {/* One repeat-display toggle for all items (issue #69):
+              consecutive identical labels render once with a ×N badge. */}
+            <div className="seg-group" role="group" aria-label="Repeat display">
+              <button
+                type="button"
+                className="seg-btn"
+                aria-pressed={compact}
+                onClick={() => setCompact(true)}
+              >
+                <Repeat size={14} /> Compact
+              </button>
+              <button
+                type="button"
+                className="seg-btn"
+                aria-pressed={!compact}
+                onClick={() => setCompact(false)}
+              >
+                <List size={14} /> Expanded
               </button>
             </div>
             <div
@@ -291,7 +338,9 @@ export function SetlistViewPage() {
                       <div
                         key={item.id}
                         data-testid="setlist-view-item"
-                        style={view === 'sheet' ? {} : zoomStyle(scale)}
+                        style={
+                          effectiveView === 'sheet' ? {} : zoomStyle(scale)
+                        }
                       >
                         <div className="card mb-3 flex items-start gap-3 p-4">
                           <span className="mt-0.5 w-6 shrink-0 text-right font-mono text-[12px] tabular-nums text-subtle">
@@ -320,7 +369,7 @@ export function SetlistViewPage() {
                     <div
                       key={item.id}
                       data-testid="setlist-view-item"
-                      style={view === 'sheet' ? {} : zoomStyle(scale)}
+                      style={effectiveView === 'sheet' ? {} : zoomStyle(scale)}
                     >
                       <div className="card mb-3 p-5">
                         <div className="mb-3 flex items-start gap-3">
@@ -377,8 +426,9 @@ export function SetlistViewPage() {
                             arrangement.defaultSequence
                           }
                           transposedKey={item.transposedKey}
-                          view={view}
+                          view={effectiveView}
                           scale={scale}
+                          compact={compact}
                           keyOffset={keyOffsets[item.id] ?? 0}
                           onKeyOffsetChange={(o) =>
                             setKeyOffsets((prev) => ({

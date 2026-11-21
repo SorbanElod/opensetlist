@@ -8,6 +8,7 @@ vi.mock('abcjs', () => ({ renderAbc: vi.fn() }));
 import { renderAbc } from 'abcjs';
 
 import type { DefaultView, GroupRole } from '../api/auth';
+import type { Arrangement } from '../api/arrangements';
 import { renderApp } from '../test/renderApp';
 import { stubFetch } from '../test/fetchMock';
 
@@ -72,7 +73,7 @@ function stubApi({
 }: {
   defaultView?: DefaultView;
   role?: GroupRole;
-  arrangements?: (typeof A1)[];
+  arrangements?: Arrangement[];
 } = {}) {
   return stubFetch((path) => {
     if (path === '/api/auth/me')
@@ -205,5 +206,54 @@ describe('SongDetailPage (issue #51: inline default arrangement)', () => {
     ).toBe(2);
     expect(screen.queryByLabelText('Edit song')).toBeNull();
     expect(screen.queryByText('New arrangement')).toBeNull();
+  });
+
+  it('issue #69: switching to a sheet-less inline arrangement disables Sheet and falls back', async () => {
+    // Chords over rests + w: lyrics — no melody anywhere.
+    const SHEETLESS = {
+      id: 'a3',
+      songId: 's1',
+      title: 'Chord sheet',
+      originalKey: 'G',
+      bpm: null,
+      defaultSequence: ['Pre'],
+      sections: [
+        {
+          label: 'Pre',
+          content: 'X:1\nK:G\n"G" z4 | "Am" z4 |\nw: sha-la-lom',
+        },
+      ],
+      version: 1,
+      createdAt: '2026-10-15T10:00:00.000Z',
+    };
+    stubApi({ arrangements: [A1, A2, SHEETLESS] }); // defaultView: sheet, member
+    renderApp('/songs/s1');
+
+    // a1 (newest, melodic): Sheet enabled and active via abcjs.
+    const sheetBtn = await screen.findByRole('button', { name: /sheet/i });
+    await waitFor(() => {
+      expect(vi.mocked(renderAbc).mock.calls.length).toBeGreaterThan(0);
+    });
+    expect(sheetBtn).toHaveProperty('disabled', false);
+
+    // Switch to the sheet-less arrangement: Sheet disables, Chords falls in.
+    fireEvent.change(screen.getByRole('combobox', { name: 'Arrangement' }), {
+      target: { value: 'a3' },
+    });
+    await screen.findByRole('heading', { level: 2, name: 'Pre' });
+    expect(screen.getByRole('button', { name: /sheet/i })).toHaveProperty(
+      'disabled',
+      true,
+    );
+    expect(
+      screen
+        .getByRole('button', { name: /chords/i })
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
+    await waitFor(() => {
+      expect(document.querySelectorAll('.text-accent').length).toBeGreaterThan(
+        0,
+      );
+    });
   });
 });

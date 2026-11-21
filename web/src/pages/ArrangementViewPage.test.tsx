@@ -9,7 +9,7 @@ import { renderAbc } from 'abcjs';
 
 import { renderApp } from '../test/renderApp';
 import { stubFetch } from '../test/fetchMock';
-import type { DefaultView } from '../api/auth';
+import type { DefaultView, GroupRole } from '../api/auth';
 import { keyAtOffset, transposeAbc } from '../lib/transpose';
 import { sheetAbc } from '../lib/abcViews';
 
@@ -53,14 +53,19 @@ const ARRANGEMENT = {
   createdAt: '2026-10-29T10:00:00.000Z',
 };
 
-function stubApi(defaultView: DefaultView = 'sheet') {
+function stubApi(
+  defaultView: DefaultView = 'sheet',
+  opts: { arrangement?: typeof ARRANGEMENT; role?: GroupRole } = {},
+) {
+  const arrangement = opts.arrangement ?? ARRANGEMENT;
+  const role: GroupRole = opts.role ?? 'member';
   return stubFetch((path, init) => {
     if (path === '/api/auth/me' && (!init?.method || init.method === 'GET'))
       return {
         status: 200,
         body: {
           user: { ...USER, defaultView },
-          memberships: [{ groupId: 'g1', role: 'member' }],
+          memberships: [{ groupId: 'g1', role }],
         },
       };
     if (path === '/api/auth/me' && init?.method === 'PATCH') {
@@ -71,16 +76,52 @@ function stubApi(defaultView: DefaultView = 'sheet') {
         status: 200,
         body: {
           user: { ...USER, defaultView: body.defaultView },
-          memberships: [{ groupId: 'g1', role: 'member' }],
+          memberships: [{ groupId: 'g1', role }],
         },
       };
     }
-    if (path === '/api/arrangements/a1')
-      return { status: 200, body: { arrangement: ARRANGEMENT } };
+    if (path === `/api/arrangements/${arrangement.id}`)
+      return { status: 200, body: { arrangement } };
     if (path === '/api/songs/s1') return { status: 200, body: { song: SONG } };
     return { status: 404, body: {} };
   });
 }
+
+// Sheet-less arrangement (issue #69): every section is chords over rests +
+// w: lyrics — no pitch anywhere, like an imported photo chord sheet.
+// The sequence is the "Táruljatok fel" play order from the acceptance.
+const TARULJATOK = {
+  id: 'a9',
+  songId: 's1',
+  title: 'Chord sheet (no melody)',
+  originalKey: 'G',
+  bpm: 80,
+  defaultSequence: ['V1', 'V1', 'V1', 'R1', 'R1', 'R1', 'V2', 'R2', 'V3', 'R2'],
+  sections: [
+    {
+      label: 'V1',
+      content: 'X:1\nT:V1\nK:G\n"G" z4 | "C" z4 |\nw: ver-se one words',
+    },
+    {
+      label: 'R1',
+      content: 'X:1\nK:G\n"G" z2 | "D" z2 |\nw: re-frain one words',
+    },
+    {
+      label: 'V2',
+      content: 'X:1\nK:G\n"C" z4 | "G" z4 |\nw: ver-se two words',
+    },
+    {
+      label: 'R2',
+      content: 'X:1\nK:G\n"D" z4 | "G" z4 |\nw: re-frain two words',
+    },
+    {
+      label: 'V3',
+      content: 'X:1\nK:G\n"Em" z4 | "C" z4 |\nw: ver-se three words',
+    },
+  ],
+  version: 1,
+  createdAt: '2026-10-29T11:00:00.000Z',
+};
 
 afterEach(() => {
   cleanup();
@@ -353,5 +394,114 @@ describe('ArrangementViewPage', () => {
         screen.queryByRole('button', { name: /set as my default/i }),
       ).toBeNull();
     });
+  });
+});
+
+describe('P2.7 — sheet-less arrangements (issue #69)', () => {
+  it('disables Sheet with a tooltip on a chords+lyrics-only arrangement; a member with defaultView sheet falls back to Chords', async () => {
+    stubApi('sheet', { arrangement: TARULJATOK });
+    renderApp('/arrangements/a9');
+
+    const sheetBtn = await screen.findByRole('button', { name: /sheet/i });
+    expect(sheetBtn).toHaveProperty('disabled', true);
+    expect(sheetBtn.getAttribute('title')).toMatch(/no sheet music/i);
+    // Fallback to Chords: the chord chart renders, abcjs is never called.
+    await waitFor(() => {
+      expect(document.querySelectorAll('.text-accent').length).toBeGreaterThan(
+        0,
+      );
+    });
+    expect(vi.mocked(renderAbc).mock.calls).toHaveLength(0);
+    expect(
+      screen
+        .getByRole('button', { name: /chords/i })
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('falls back to Lyrics for a reader whose default view is sheet', async () => {
+    stubApi('sheet', { arrangement: TARULJATOK, role: 'reader' });
+    renderApp('/arrangements/a9');
+
+    const sheetBtn = await screen.findByRole('button', { name: /sheet/i });
+    expect(sheetBtn).toHaveProperty('disabled', true);
+    // Lyrics render (compact: the ×3 verse once); no abcjs.
+    expect((await screen.findAllByText('verse one words')).length).toBe(1);
+    expect(vi.mocked(renderAbc).mock.calls).toHaveLength(0);
+    expect(
+      screen
+        .getByRole('button', { name: /lyrics/i })
+        .getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('keeps Sheet enabled when the arrangement has a melody', async () => {
+    stubApi('sheet'); // ARRANGEMENT: music lines with pitches
+    renderApp('/arrangements/a1');
+
+    const sheetBtn = await screen.findByRole('button', { name: /sheet/i });
+    expect(sheetBtn).toHaveProperty('disabled', false);
+    expect(sheetBtn.getAttribute('aria-pressed')).toBe('true');
+  });
+});
+
+describe('P2.7 — compact repeat display (issue #69)', () => {
+  it('collapses consecutive repeats to one section with a ×N badge (Táruljatok fel acceptance)', async () => {
+    stubApi('lyrics', { arrangement: TARULJATOK });
+    renderApp('/arrangements/a9');
+
+    // Compact (default): V1 ×3, R1 ×3, V2, R2, V3, R2 — the non-consecutive
+    // R2 stays two separate boxes.
+    const headings = await screen.findAllByRole('heading', { level: 2 });
+    expect(headings.map((h) => h.textContent)).toEqual([
+      'V1×3',
+      'R1×3',
+      'V2',
+      'R2',
+      'V3',
+      'R2',
+    ]);
+    // Each collapsed section renders ONCE.
+    expect(screen.getAllByText('verse one words')).toHaveLength(1);
+    expect(screen.getAllByText('refrain one words')).toHaveLength(1);
+    expect(screen.getAllByText('refrain two words')).toHaveLength(2);
+    // The ×N badges carry the repeat counts.
+    expect(
+      screen.getAllByTestId('repeat-badge').map((b) => b.textContent),
+    ).toEqual(['×3', '×3']);
+    // Presentation-only: the expanded sequence indexes are preserved.
+    const indexes = [...document.querySelectorAll('[data-sequence-index]')].map(
+      (el) => el.getAttribute('data-sequence-index'),
+    );
+    expect(indexes).toEqual(['0', '3', '6', '7', '8', '9']);
+  });
+
+  it('the Expanded toggle restores the full linear list (all 10 steps)', async () => {
+    stubApi('lyrics', { arrangement: TARULJATOK });
+    renderApp('/arrangements/a9');
+
+    await screen.findAllByRole('heading', { level: 2 });
+    fireEvent.click(screen.getByRole('button', { name: /expanded/i }));
+
+    const headings = screen.getAllByRole('heading', { level: 2 });
+    expect(headings.map((h) => h.textContent)).toEqual([
+      'V1',
+      'V1',
+      'V1',
+      'R1',
+      'R1',
+      'R1',
+      'V2',
+      'R2',
+      'V3',
+      'R2',
+    ]);
+    expect(screen.queryAllByTestId('repeat-badge')).toHaveLength(0);
+    expect(screen.getAllByText('verse one words')).toHaveLength(3);
+    // Expanded: every step keeps its own expanded index.
+    const indexes = [...document.querySelectorAll('[data-sequence-index]')].map(
+      (el) => el.getAttribute('data-sequence-index'),
+    );
+    expect(indexes).toEqual(['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']);
   });
 });

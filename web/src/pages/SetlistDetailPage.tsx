@@ -29,6 +29,7 @@ import {
 } from '../api/setlists';
 import { canWrite, useAuth, useMyRole } from '../auth/AuthContext';
 import { PageHeader } from '../components/PageHeader';
+import { formatSequence } from '../lib/sequence';
 
 // The detail page is the working surface for one event: an ordered list of
 // arrangement items + note-only rows. Every mutation sends the setlist
@@ -233,7 +234,9 @@ export function SetlistDetailPage() {
                   </div>
                   <div className="truncate text-[11.5px] text-muted">
                     {item.arrangement
-                      ? `${item.arrangement.originalKey}${item.transposedKey ? ` → ${item.transposedKey}` : ''} · ${(item.effectiveSequence ?? []).join(' → ')}`
+                      ? // Summary line: consecutive repeats collapsed (×N),
+                        // same presentation as the performance views (#69).
+                        `${item.arrangement.originalKey}${item.transposedKey ? ` → ${item.transposedKey}` : ''} · ${formatSequence(item.effectiveSequence ?? [])}`
                       : item.notes}
                   </div>
                   {item.arrangement && item.notes && (
@@ -481,7 +484,7 @@ function ItemEditor({
           {usesDefaultSequence ? (
             <p className="mb-3 text-[12.5px] text-muted">
               Using the arrangement default (
-              {arrangement.defaultSequence.join(' → ')}).
+              {formatSequence(arrangement.defaultSequence)}).
               <button
                 type="button"
                 className="ml-1 font-semibold text-accent"
