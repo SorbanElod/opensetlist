@@ -4,11 +4,11 @@ import { buildApp } from './app.js';
 import { loadEnv } from './config.js';
 import { buildTestDb } from './test-utils/db.js';
 
-// /healthz needs no DB logic, but buildApp now takes one (auth routes are
-// registered inside). Same DATABASE_URL pattern as the route tests.
+// /api/health needs no DB logic, but buildApp now takes one (auth routes
+// are registered inside). Same DATABASE_URL pattern as the route tests.
 const dbUrl = process.env.DATABASE_URL;
 
-describe.skipIf(!dbUrl)('GET /healthz', () => {
+describe.skipIf(!dbUrl)('GET /api/health', () => {
   let app: Awaited<ReturnType<typeof buildApp>>;
   // No-op until beforeAll succeeds: a failing setup must not add noise.
   let close: () => Promise<void> = async () => {};
@@ -33,7 +33,7 @@ describe.skipIf(!dbUrl)('GET /healthz', () => {
   });
 
   it('returns ok without a session', async () => {
-    const res = await app.inject({ method: 'GET', url: '/healthz' });
+    const res = await app.inject({ method: 'GET', url: '/api/health' });
 
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ status: 'ok' });

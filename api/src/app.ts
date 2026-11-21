@@ -24,7 +24,10 @@ export async function buildApp(env: Env, db: Db) {
   await app.register(arrangementsRoutes, { db });
   await app.register(tagsRoutes, { db });
 
-  app.get('/healthz', async () => ({ status: 'ok' }));
+  // Liveness probe: no auth, no DB call. Must live under /api — in prod
+  // traefik only routes PathPrefix(`/api`) to this container, and the
+  // deploy pipeline curls https://<host>/api/health as its go/no-go.
+  app.get('/api/health', async () => ({ status: 'ok' }));
 
   return app;
 }

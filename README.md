@@ -37,7 +37,7 @@ docker compose up --build
 ```
 
 - Web: http://localhost:5173 (Vite dev server with hot reload)
-- API: http://localhost:3000/healthz (tsx watch reload)
+- API: http://localhost:3000/api/health (tsx watch reload)
 
 `psql` access from the host:
 
