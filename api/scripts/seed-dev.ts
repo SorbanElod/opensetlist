@@ -123,7 +123,11 @@ async function seedDemoSetlist(db: Db, groupId: string) {
 
   let version = setlist.version;
   let itemCount = 0;
-  const add = async (item: Parameters<typeof addItem>[1]['item']) => {
+  // Callers pass the item fields only — the helper injects the setlist
+  // version it last saw (optimistic locking), so 'version' is omitted here.
+  const add = async (
+    item: Omit<Parameters<typeof addItem>[1]['item'], 'version'>,
+  ) => {
     const result = await addItem(db, {
       groupId,
       setlistId: setlist.id,
