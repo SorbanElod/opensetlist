@@ -1,6 +1,11 @@
 # CI for every PR and every push to master. One job: for a repo this size,
 # job startup costs more than the steps themselves, so a single sequential
 # job is faster than parallel lint/typecheck/test jobs.
+#
+# On pushes to master the pipeline continues past tests: build-push builds
+# the production images to GHCR, deploy scp's docker-compose.prod.yml to the
+# VPS and restarts the stack (pull -> migrate -> up -> health curl).
+# Both jobs are gated to master pushes so PRs only run the ci job.
 name: CI
 
 on:
@@ -13,9 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     # Integration tests (auth routes) need a live Postgres. Migrations are
     # applied by the tests themselves (drizzle migrator), no extra step.
+    # postgres:18-alpine: same major version as the dev compose and prod.
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:18-alpine
         env:
           POSTGRES_USER: opensetlist
           POSTGRES_PASSWORD: opensetlist
@@ -55,4 +61,75 @@ jobs:
         run: pnpm test
 
       - name: Build
-        run: pnpm -C web build
+        # Both apps: api compiles to dist/ (tsc), web bundles (vite).
+        run: pnpm -r build
+
+  # Push the production images to GHCR. ghcr paths must be lowercase, so the
+  # repository name is lowercased before tagging. The compose file on the
+  # server references the :latest tag; :<sha> is kept for rollback drills.
+  build-push:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: api, file: docker/api.Dockerfile }
+          - { name: web, file: docker/web.Dockerfile }
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Compute GHCR image name (lowercase)
+        run: echo "IMAGE=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')/${{ matrix.name }}" >> "$GITHUB_ENV"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+
+  # Restart the stack on the VPS. Order is load-bearing:
+  # pull -> migrate -> up -> health curl. `compose run` also starts
+  # postgres (depends_on) and waits for its healthcheck, so the very
+  # first deploy can migrate into a fresh database.
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: build-push
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: 'docker-compose.prod.yml'
+          target: '/opt/opensetlist'
+
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /opt/opensetlist
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml run --rm api npx drizzle-kit migrate
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            sleep 5
+            curl -fsS https://opensetlist.spanom.net/api/health
