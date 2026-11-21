@@ -57,6 +57,33 @@ export function orderedSections(
 // directives and % comments.
 const NON_MUSIC_LINE = /^([A-Za-z][A-Za-z0-9_]*:|%%|%)/;
 
+// Does this ABC carry a melody (sheet music)? True when at least one music
+// line has a real pitch: a non-quoted token containing A-G/a-g. Quoted
+// "..." tokens are chord symbols and rests (z/Z) are not a melody, so a
+// chords+lyrics-only section — the photo-chord-sheet convention of chords
+// over rests plus w: lines, e.g. `"G" z4 | "C" z4 |` — has NO sheet
+// (issue #69). Derived at render time, never stored: the ABC text stays
+// the single source, and Chords/Lyrics views keep working unchanged.
+export function hasSheetMusic(abc: string): boolean {
+  return abc
+    .split('\n')
+    .filter((line) => line.trim() !== '' && !NON_MUSIC_LINE.test(line))
+    .some((line) =>
+      (line.match(/"[^"]*"|\S+/g) ?? []).some(
+        (token) => !token.startsWith('"') && /[A-Ga-g]/.test(token),
+      ),
+    );
+}
+
+// Arrangement-level granularity (issue #69): the arrangement has a sheet as
+// soon as ANY section has one — a single melodic section keeps the Sheet
+// view enabled, and sheet-less sections render a hint inside it.
+export function arrangementHasSheet<
+  S extends { content: string },
+>(arrangement: { sections: S[] }): boolean {
+  return arrangement.sections.some((s) => hasSheetMusic(s.content));
+}
+
 // Sheet view strips the per-section T: (title) and C: (composer) header
 // lines before rendering: the page already shows the song title and each
 // section carries its label heading — repeating both inside every staff is
