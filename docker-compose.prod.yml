@@ -1,0 +1,73 @@
+# Production stack for opensetlist.spanom.net (Hetzner VPS).
+# CI scp's this file to /opt/opensetlist/ and runs it there, where a
+# hand-maintained .env sits next to it (env_file: .env) with DB_PASSWORD,
+# DATABASE_URL (host `postgres`, not localhost), NODE_ENV, ACME_EMAIL.
+# Images are tagged :latest by CI; rollback = pin the previous :<sha>.
+# Postgres publishes no ports — it is reachable only on the compose network.
+services:
+  traefik:
+    image: traefik:v3
+    command:
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.websecure.http.tls.certResolver=le
+      - --certificatesresolvers.le.acme.email=${ACME_EMAIL}
+      - --certificatesresolvers.le.acme.httpchallenge.entrypoint=web
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - acme:/letsencrypt
+    restart: unless-stopped
+
+  api:
+    image: ghcr.io/sorbanelod/opensetlist/api:latest
+    env_file: .env
+    environment:
+      # The api defaults to HOST=127.0.0.1, which inside a container is
+      # unreachable from traefik — bind all interfaces.
+      HOST: 0.0.0.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.api.rule=Host(`opensetlist.spanom.net`) && PathPrefix(`/api`)
+      - traefik.http.routers.api.tls.certresolver=le
+      - traefik.http.services.api.loadbalancer.server.port=3000
+    restart: unless-stopped
+
+  web:
+    image: ghcr.io/sorbanelod/opensetlist/web:latest
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.web.rule=Host(`opensetlist.spanom.net`)
+      - traefik.http.routers.web.tls.certresolver=le
+      - traefik.http.services.web.loadbalancer.server.port=80
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: opensetlist
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: opensetlist
+    volumes:
+      # PG18 images keep data in a major-version subdirectory — mount at
+      # /var/lib/postgresql, NOT .../data (the 18 entrypoint refuses the
+      # old path). Critical on first deploy: a fresh volume at .../data
+      # makes the postgres container exit immediately.
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U opensetlist']
+      interval: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  acme:

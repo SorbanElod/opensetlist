@@ -6,7 +6,11 @@ name: opensetlist
 
 services:
   db:
-    image: postgres:16-alpine
+    # Same major version as prod (docker-compose.prod.yml) and CI: dev must
+    # not drift from the version migrations run against in production.
+    # One-time note: a data volume initialized by Postgres 16 is not
+    # compatible with 18 — wipe it once with `docker compose down -v`.
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-opensetlist}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-opensetlist}
@@ -15,7 +19,10 @@ services:
     ports:
       - '${POSTGRES_PORT:-5432}:5432'
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # PG18 images keep data in a major-version subdirectory — mount the
+      # volume at /var/lib/postgresql, NOT .../data (the 18 entrypoint
+      # refuses to start with a mount at the old path).
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test:
         [

@@ -1,0 +1,12 @@
+{
+  // Build-only config: emits runnable JS to dist/. `pnpm typecheck` and the
+  // dev/test flows keep using tsconfig.json (noEmit). Tests and test-utils
+  // are excluded — they are not shipped in the production image.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "include": ["src"],
+  "exclude": ["src/**/*.test.ts", "src/test-utils"]
+}
